@@ -56,6 +56,13 @@ mise run verify    -- --target <path>
 mise run update    -- --target <path>
 ```
 
+scaffold 후 pi 실행:
+```bash
+mise run pi              # pi 세션 시작
+mise run pi:fork         # 폴더 격리 환경
+mise run pi:shell -- list  # 비대화형 검증
+```
+
 ## /pi-workspace:scaffold 플로우
 
 1. **doctor** 실행 → 결과 사용자에게 보고
@@ -180,6 +187,16 @@ AGENTS.md에 에이전트 행동 지침 프롬프트를 관리한다.
 ```
 
 기존 마커가 있으면 교체, 없으면 AGENTS.md 끝에 추가.
+
+## 인터렉션 방식
+
+사용자에게 선택지를 제시할 때 실행 환경에 따라 다음 순서로 도구를 선택한다.
+
+1. `ask_user_question` 도구가 있으면 → **pi 환경** — 해당 도구 사용
+2. `AskUserQuestion` 도구가 있으면 → **Claude Code 환경** — 해당 도구 사용
+3. 둘 다 없으면 → 텍스트로 선택지 나열 후 응답 대기
+
+환경 이름을 추정하지 않는다. 도구 가용 여부로만 판단한다.
 
 ## 금지
 

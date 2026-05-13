@@ -50,9 +50,9 @@ The agent runs a doctor check, reports any issues, then scaffolds:
 .yolobox.Dockerfile     — pi pre-installed image
 .mise.toml              — tool versions + task shortcuts
 AGENTS.md               — project-level agent instructions
-.mise/tasks/agent       — launch pi in YoloBox sandbox
-.mise/tasks/agent-fork  — fork into isolated workspace
-.mise/tasks/agent-shell — shell into sandbox (debug)
+.mise/tasks/pi          — launch pi in YoloBox sandbox
+.mise/tasks/pi:fork     — fork into isolated workspace
+.mise/tasks/pi:shell    — shell into sandbox (debug)
 ```
 
 ### Environment check
@@ -216,10 +216,10 @@ mise run update    -- --target <path> [--force]
 After scaffold, launch pi inside the YoloBox sandbox:
 
 ```bash
-mise run agent          # launch pi (interactive)
-mise run agent-fork     # fork into an isolated workspace copy
-mise run agent-fork -- feature-name  # named fork
-mise run agent-shell    # shell only, no pi autorun (debug)
+mise run pi             # launch pi (interactive)
+mise run pi:fork        # fork into an isolated workspace copy
+mise run pi:fork -- feature-name  # named fork
+mise run pi:shell       # shell only, no pi autorun (debug)
 ```
 
 ---

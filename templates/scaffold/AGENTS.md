@@ -5,10 +5,10 @@
 이 프로젝트는 YoloBox + Pi + mise 기반 agent workspace입니다.
 
 ```bash
-mise run agent           # pi 세션 시작 (기본)
-mise run agent-fork      # 폴더 격리 환경에서 실행
-mise run agent-fork -- feature-name  # 이름 지정
-mise run agent-shell -- list         # 비대화형 검증
+mise run pi              # pi 세션 시작 (기본)
+mise run pi:fork         # 폴더 격리 환경에서 실행
+mise run pi:fork -- feature-name  # 이름 지정
+mise run pi:shell -- list         # 비대화형 검증
 ```
 
 ## 서브에이전트

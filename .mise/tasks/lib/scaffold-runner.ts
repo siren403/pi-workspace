@@ -6,7 +6,7 @@ import { writeManifest, defaultManifest, type Manifest } from "./manifest.ts";
 import { injectGitignore } from "./gitignore.ts";
 
 const TEMPLATES_DIR = resolve(import.meta.dir, "../../../templates/scaffold");
-const EXECUTABLE_TASKS = ["agent", "agent-fork", "agent-shell"];
+const EXECUTABLE_TASKS = ["pi", "pi:fork", "pi:shell"];
 
 export interface ScaffoldOptions {
   target: string;
