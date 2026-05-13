@@ -1,3 +1,17 @@
 [tools]
 node = "24"
 "npm:@earendil-works/pi-coding-agent" = "latest"
+
+[tasks."pi:version"]
+description = "sandbox pi 버전 변경 (Dockerfile 갱신 + rebuild 예약). 예: mise run pi:version -- 0.75.0"
+run = """
+VERSION=${1:?Usage: mise run pi:version -- <x.y.z>}
+DOCKERFILE=".yolobox.Dockerfile"
+if [ ! -f "$DOCKERFILE" ]; then
+  echo "Error: $DOCKERFILE not found" >&2
+  exit 1
+fi
+sed -i "s/@earendil-works\\/pi-coding-agent@[0-9][0-9.]*/@earendil-works\\/pi-coding-agent@${VERSION}/" "$DOCKERFILE"
+echo "[pi:version] .yolobox.Dockerfile updated → @earendil-works/pi-coding-agent@${VERSION}"
+echo "             Next 'mise run pi' will rebuild the sandbox image."
+"""
