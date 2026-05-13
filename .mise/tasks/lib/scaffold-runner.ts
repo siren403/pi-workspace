@@ -108,11 +108,17 @@ export async function runScaffold(opts: ScaffoldOptions): Promise<void> {
     console.warn("    Run manually: pi install npm:pi-subagents -l");
   }
 
-  // 6. --install 플래그: mise install + lock
+  // 6. --install 플래그: mise trust + install + lock
   if (opts.install) {
     console.log("\n[scaffold] Running mise install...");
-    await $`mise install`.cwd(target).nothrow();
-    await $`mise lock`.cwd(target).nothrow();
+    await $`mise trust`.cwd(target).quiet().nothrow();
+    const installResult = await $`mise install`.cwd(target).nothrow();
+    if (installResult.exitCode === 0) {
+      console.log("  ✓ mise install complete (node + pi)");
+      await $`mise lock`.cwd(target).quiet().nothrow();
+    } else {
+      console.warn("  ⚠ mise install failed — run manually: mise install");
+    }
   }
 
   // 7. 결과 출력
