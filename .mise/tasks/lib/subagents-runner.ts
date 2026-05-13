@@ -1,4 +1,5 @@
 import { resolve, join, dirname } from "path";
+import { homedir } from "os";
 import { mkdir } from "fs/promises";
 import { $ } from "bun";
 import { listModels, getProviders, parseContext, type Model } from "./models.ts";
@@ -54,64 +55,145 @@ function providerTier(provider: string, premium: boolean): number {
     : (BUDGET_TIER[provider] ?? 3);
 }
 
+// ─── 버전 타이브레이커 ───────────────────────────────────────────────────────
+
+function extractVersion(id: string): number[] {
+  const m = id.match(/(\d+(?:\.\d+)+)/);
+  if (m) return m[1].split(".").map(Number);
+  const n = id.match(/(\d+)/);
+  return n ? [Number(n[1])] : [0];
+}
+
+function cmpVersion(a: string, b: string): number {
+  const va = extractVersion(a);
+  const vb = extractVersion(b);
+  for (let i = 0; i < Math.max(va.length, vb.length); i++) {
+    const diff = (vb[i] ?? 0) - (va[i] ?? 0); // 내림차순 (높은 버전 우선)
+    if (diff !== 0) return diff;
+  }
+  return 0;
+}
+
 // ─── 모델 선택 휴리스틱 ──────────────────────────────────────────────────────
 
-function pickModel(models: Model[], role: Role): Model | undefined {
+function rankModels(models: Model[], role: Role, n = 3): Model[] {
   const meta = ROLE_META[role];
 
   const candidates = meta.requireThinking
     ? models.filter((m) => m.thinking)
     : models;
-  if (candidates.length === 0) return models[0];
+  const pool = candidates.length > 0 ? candidates : models;
 
-  return [...candidates].sort((a, b) => {
-    const tierA = providerTier(a.provider, meta.premiumProvider);
-    const tierB = providerTier(b.provider, meta.premiumProvider);
-
-    // 두 티어 모두 낮을수록 우선 (premium/budget 기준이 티어 테이블에 내장됨)
-    const tierCmp = tierA - tierB;
+  return [...pool].sort((a, b) => {
+    const tierCmp = providerTier(a.provider, meta.premiumProvider)
+                  - providerTier(b.provider, meta.premiumProvider);
     if (tierCmp !== 0) return tierCmp;
 
-    // 같은 티어 내에서 컨텍스트 기준 정렬
     const ctxA = parseContext(a.context);
     const ctxB = parseContext(b.context);
-    return meta.largeContext ? ctxB - ctxA : ctxA - ctxB;
-  })[0];
+    const ctxCmp = meta.largeContext ? ctxB - ctxA : ctxA - ctxB;
+    if (ctxCmp !== 0) return ctxCmp;
+
+    return cmpVersion(a.id, b.id);
+  }).slice(0, n);
 }
 
-/** 사용 가능한 모델 목록에서 역할별 제안 생성 */
-export function propose(models: Model[]): Record<Role, Model | undefined> {
-  const proposals = {} as Record<Role, Model | undefined>;
+/** 사용 가능한 모델 목록에서 역할별 후보 top 3 생성 */
+export function propose(models: Model[]): Record<Role, Model[]> {
+  const proposals = {} as Record<Role, Model[]>;
   for (const role of ROLES) {
-    proposals[role] = pickModel(models, role);
+    proposals[role] = rankModels(models, role);
   }
   return proposals;
 }
 
+// ─── 메인 모델 ────────────────────────────────────────────────────────────────
+
+interface GlobalSettings {
+  defaultProvider?: string;
+  defaultModel?: string;
+  [key: string]: unknown;
+}
+
+const GLOBAL_SETTINGS_PATH = resolve(homedir(), ".pi", "agent", "settings.json");
+
+export async function readGlobalSettings(): Promise<GlobalSettings> {
+  const f = Bun.file(GLOBAL_SETTINGS_PATH);
+  return (await f.exists()) ? (await f.json() as GlobalSettings) : {};
+}
+
+/** 메인 오케스트레이터용 후보 top 3: 프리미엄·thinking·대컨텍스트 우선 */
+export function proposeMain(models: Model[], n = 3): Model[] {
+  const candidates = models.filter((m) => m.thinking);
+  const pool = candidates.length > 0 ? candidates : models;
+
+  return [...pool].sort((a, b) => {
+    const tierCmp = (PREMIUM_TIER[a.provider] ?? 3) - (PREMIUM_TIER[b.provider] ?? 3);
+    if (tierCmp !== 0) return tierCmp;
+
+    const ctxCmp = parseContext(b.context) - parseContext(a.context);
+    if (ctxCmp !== 0) return ctxCmp;
+
+    return cmpVersion(a.id, b.id);
+  }).slice(0, n);
+}
+
+async function patchGlobalSettings(providerModel: string): Promise<void> {
+  const [provider, ...rest] = providerModel.split("/");
+  const model = rest.join("/");
+
+  const f = Bun.file(GLOBAL_SETTINGS_PATH);
+  const settings: GlobalSettings = (await f.exists()) ? (await f.json() as GlobalSettings) : {};
+
+  settings.defaultProvider = provider;
+  settings.defaultModel = model;
+
+  await mkdir(dirname(GLOBAL_SETTINGS_PATH), { recursive: true });
+  await Bun.write(GLOBAL_SETTINGS_PATH, JSON.stringify(settings, null, 2) + "\n");
+  console.log(`  ✓ ~/.pi/agent/settings.json defaultModel updated → ${providerModel}`);
+}
+
 // ─── 출력 ────────────────────────────────────────────────────────────────────
 
-export function printProposals(
-  proposals: Record<Role, Model | undefined>,
+export async function printProposals(
+  proposals: Record<Role, Model[]>,
+  mainCandidates: Model[],
   providers: string[]
-): void {
-  console.log("\n[subagents] Available providers:", providers.join(", "));
-  console.log("\n[subagents] Proposed role assignments:\n");
+): Promise<void> {
+  const global = await readGlobalSettings();
+  const currentMain = global.defaultModel
+    ? `${global.defaultProvider}/${global.defaultModel}`
+    : null;
 
+  console.log("\n[subagents] Available providers:", providers.join(", "));
+
+  console.log("\n[subagents] Main orchestrator model:");
+  if (currentMain) {
+    console.log(`  current: ${currentMain}  [configured]`);
+  } else {
+    console.log(`  (not configured — shortlist below)`);
+  }
+  mainCandidates.forEach((m, i) => {
+    const tag = currentMain === `${m.provider}/${m.id}` ? "  ← current" : "";
+    console.log(`    ${i + 1}. ${m.provider}/${m.id}  [ctx:${m.context}]${tag}`);
+  });
+
+  console.log("\n[subagents] Subagent shortlisted candidates (agent picks final):\n");
   for (const role of ROLES) {
-    const m = proposals[role];
+    const candidates = proposals[role];
     const meta = ROLE_META[role];
-    const modelStr = m ? `${m.provider}/${m.id}` : "(none available)";
-    console.log(`  ${role.padEnd(10)} thinking:${meta.thinkingLevel.padEnd(7)} → ${modelStr}`);
+    console.log(`  ${role} (thinking:${meta.thinkingLevel}):`);
+    if (candidates.length === 0) {
+      console.log(`    (none available)`);
+    } else {
+      candidates.forEach((m, i) => {
+        console.log(`    ${i + 1}. ${m.provider}/${m.id}  [ctx:${m.context}]`);
+      });
+    }
   }
 
   console.log(`
-To apply:
-  mise run subagents -- --target <path> --apply
-
-To customise:
-  mise run subagents -- --target <path> --apply \\
-    --explore opencode-go/deepseek-v4-flash \\
-    --review  openai-codex/gpt-5.5
+Agent will analyze candidates and select the best model per role.
 `);
 }
 
@@ -181,6 +263,7 @@ export interface SubagentsOptions {
   target: string;
   list: boolean;
   apply: boolean;
+  main?: string;
   explore?: string;
   bulk?: string;
   patch?: string;
@@ -205,21 +288,30 @@ export async function runSubagents(opts: SubagentsOptions): Promise<void> {
 
   const providers = getProviders(models);
   const proposals = propose(models);
+  const mainCandidates = proposeMain(models);
 
   if (opts.list || !opts.apply) {
-    printProposals(proposals, providers);
+    await printProposals(proposals, mainCandidates, providers);
     return;
   }
 
-  // --apply: 커스텀 값 우선, 없으면 제안값 사용
+  // --apply: 커스텀 값 우선, 없으면 shortlist[0] 사용 (에이전트가 --apply 전에 명시적으로 지정)
+  const top = (role: Role) => {
+    const m = proposals[role][0];
+    return m ? `${m.provider}/${m.id}` : "";
+  };
   const assignments: Record<Role, string> = {
-    explore: opts.explore ?? (proposals.explore ? `${proposals.explore.provider}/${proposals.explore.id}` : ""),
-    bulk:    opts.bulk    ?? (proposals.bulk    ? `${proposals.bulk.provider}/${proposals.bulk.id}`       : ""),
-    patch:   opts.patch   ?? (proposals.patch   ? `${proposals.patch.provider}/${proposals.patch.id}`     : ""),
-    review:  opts.review  ?? (proposals.review  ? `${proposals.review.provider}/${proposals.review.id}`   : ""),
+    explore: opts.explore ?? top("explore"),
+    bulk:    opts.bulk    ?? top("bulk"),
+    patch:   opts.patch   ?? top("patch"),
+    review:  opts.review  ?? top("review"),
   };
 
   console.log("\n[subagents] Applying configuration...\n");
+
+  if (opts.main) {
+    await patchGlobalSettings(opts.main);
+  }
   await patchSettings(opts.target, assignments);
   await writeAgentFiles(opts.target, assignments);
 
