@@ -7,41 +7,44 @@ const ISSUES_URL = `https://github.com/${REPO}/issues/new`;
 
 // ─── 환경 정보 수집 ──────────────────────────────────────────────────────────
 
+async function ver(r: { exitCode: number; stdout: Buffer; stderr: Buffer }): Promise<string> {
+  const out = (r.stdout.toString() || r.stderr.toString()).trim();
+  return r.exitCode === 0 ? out.split("\n")[0] : "not found";
+}
+
 async function collectEnv(): Promise<string> {
-  const lines: string[] = [];
+  const [mise, pi, yolobox, bun_, os] = await Promise.all([
+    $`mise --version`.quiet().nothrow(),
+    $`mise exec -- pi --version`.quiet().nothrow(),
+    $`yolobox --version`.quiet().nothrow(),
+    $`bun --version`.quiet().nothrow(),
+    $`uname -sr`.quiet().nothrow(),
+  ]);
 
-  const ver = async (cmd: string) => {
-    const r = await $`${cmd}`.quiet().nothrow();
-    const out = (r.stdout.toString() || r.stderr.toString()).trim();
-    return r.exitCode === 0 ? out.split("\n")[0] : "not found";
-  };
-
-  lines.push(`- mise: ${await ver("mise --version")}`);
-  lines.push(`- pi: ${await ver("mise exec -- pi --version")}`);
-  lines.push(`- yolobox: ${await ver("yolobox --version")}`);
-  lines.push(`- bun: ${await ver("bun --version")}`);
-  lines.push(`- OS: ${(await ver("uname -sr"))}`);
-
-  return lines.join("\n");
+  return [
+    `- mise: ${await ver(mise)}`,
+    `- pi: ${await ver(pi)}`,
+    `- yolobox: ${await ver(yolobox)}`,
+    `- bun: ${await ver(bun_)}`,
+    `- OS: ${await ver(os)}`,
+  ].join("\n");
 }
 
 // ─── doctor 요약 ─────────────────────────────────────────────────────────────
 
 async function collectDoctor(target: string): Promise<string> {
-  // runDoctor은 console.log로 직접 출력하므로 캡처용으로 재구현
-  const checks = [
-    { cmd: "mise --version",           name: "mise"      },
-    { cmd: "mise exec -- pi --version", name: "pi"        },
-    { cmd: "yolobox --version",        name: "yolobox"   },
-  ];
-  const rows: string[] = [];
-  for (const { cmd, name } of checks) {
-    const r = await $`${cmd}`.quiet().nothrow();
-    rows.push(`- ${name}: ${r.exitCode === 0 ? "✓" : "✗"}`);
-  }
+  const [mise, pi, yolobox] = await Promise.all([
+    $`mise --version`.quiet().nothrow(),
+    $`mise exec -- pi --version`.quiet().nothrow(),
+    $`yolobox --version`.quiet().nothrow(),
+  ]);
   const auth = await Bun.file(`${process.env.HOME}/.pi/agent/auth.json`).exists();
-  rows.push(`- pi-auth: ${auth ? "✓" : "✗"}`);
-  return rows.join("\n");
+  return [
+    `- mise: ${mise.exitCode === 0 ? "✓" : "✗"}`,
+    `- pi: ${pi.exitCode === 0 ? "✓" : "✗"}`,
+    `- yolobox: ${yolobox.exitCode === 0 ? "✓" : "✗"}`,
+    `- pi-auth: ${auth ? "✓" : "✗"}`,
+  ].join("\n");
 }
 
 // ─── gh 인증 여부 ─────────────────────────────────────────────────────────────
