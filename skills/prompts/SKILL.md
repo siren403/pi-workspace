@@ -1,5 +1,5 @@
 ---
-name: pi-workspace:prompts
+name: pi-workspace-prompts
 description: AGENTS.md에 에이전트 행동 지침 프롬프트를 관리한다. 알려진 템플릿 설치(정적)와 프로젝트 맞춤 합성(동적) 두 가지 모드를 지원한다.
 ---
 
