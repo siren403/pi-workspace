@@ -19,6 +19,13 @@ pi install npm:pi-workspace -l
 
 `--full-depth` 옵션을 사용하면 `/pi-workspace:scaffold`, `/pi-workspace:prompts` 등 서브커맨드가 스킬 목록에 개별 항목으로 노출됩니다.
 
+> **Claude Code 주의:** skills.sh는 `.claude/` 디렉토리가 있을 때만 symlink를 생성합니다.
+> 설치 전 디렉토리가 없다면 먼저 만들어 주세요.
+> ```bash
+> mkdir -p .claude
+> npx skills add siren403/pi-workspace --full-depth
+> ```
+
 ## Commands
 
 | Command | Description |
