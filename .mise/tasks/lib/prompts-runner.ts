@@ -183,6 +183,66 @@ export async function installSources(
   console.log(`\n  → AGENTS.md written`);
 }
 
+/** 에이전트가 프로젝트 컨텍스트를 수집할 수 있도록 구조화된 정보 출력 */
+export async function printContext(targetDir: string): Promise<void> {
+  const abs = resolve(targetDir);
+  console.log("\n[prompts:context]\n");
+
+  // 1. 현재 AGENTS.md
+  const agentsMd = await readAgentsMd(abs);
+  if (agentsMd.trim()) {
+    console.log("## Current AGENTS.md\n");
+    console.log(agentsMd.trim());
+    console.log();
+  } else {
+    console.log("## Current AGENTS.md\n(none)\n");
+  }
+
+  // 2. 설치된 섹션 마커 목록
+  const installed = CATALOG
+    .filter((s) => agentsMd.includes(MARKER_START(s.slug)))
+    .map((s) => s.slug);
+  console.log(`## Installed prompt sections\n${installed.length ? installed.map((s) => `- ${s}`).join("\n") : "(none)"}\n`);
+
+  // 3. pi settings
+  const piSettings = Bun.file(resolve(abs, ".pi", "settings.json"));
+  if (await piSettings.exists()) {
+    const s = await piSettings.json() as Record<string, unknown>;
+    const keys = ["defaultProvider", "defaultModel", "packages", "subagents"];
+    const subset = Object.fromEntries(keys.filter((k) => k in s).map((k) => [k, s[k]]));
+    console.log("## .pi/settings.json (relevant fields)\n");
+    console.log(JSON.stringify(subset, null, 2));
+    console.log();
+  }
+
+  // 4. package.json 또는 .mise.toml (기술 스택 힌트)
+  const pkgJson = Bun.file(resolve(abs, "package.json"));
+  if (await pkgJson.exists()) {
+    const p = await pkgJson.json() as Record<string, unknown>;
+    const { name, description, dependencies, devDependencies } = p as Record<string, unknown>;
+    console.log("## package.json (summary)\n");
+    console.log(JSON.stringify({ name, description, dependencies, devDependencies }, null, 2));
+    console.log();
+  }
+
+  const miseCfg = Bun.file(resolve(abs, ".mise.toml"));
+  if (await miseCfg.exists()) {
+    console.log("## .mise.toml\n");
+    console.log(await miseCfg.text());
+    console.log();
+  }
+
+  // 5. 카탈로그
+  console.log("## Available prompt catalog\n");
+  for (const s of CATALOG) {
+    console.log(`- ${s.slug}: ${s.description}  (${s.repo})`);
+  }
+  console.log();
+  console.log("---");
+  console.log("Use the above to synthesize a tailored AGENTS.md section for this project.");
+  console.log("Write result via: echo '<content>' | mise run prompts -- --target <path> --write --section <name>");
+}
+
 /** 에이전트가 stdin으로 합성한 내용을 섹션 마커로 AGENTS.md에 기록 */
 export async function writeSection(
   targetDir: string,
@@ -200,6 +260,7 @@ export async function writeSection(
 export interface PromptsOptions {
   target: string;
   list: boolean;
+  context: boolean;
   preview?: string;
   install?: string;
   write: boolean;
@@ -209,6 +270,11 @@ export interface PromptsOptions {
 }
 
 export async function runPrompts(opts: PromptsOptions): Promise<void> {
+  if (opts.context) {
+    await printContext(resolve(opts.target));
+    return;
+  }
+
   if (opts.list || (!opts.preview && !opts.install && !opts.write && !opts.source)) {
     printCatalog();
     return;

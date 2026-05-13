@@ -107,52 +107,50 @@ Shows the curated extension catalog with current install status, then installs s
 
 ### Agent instruction prompts
 
+Supported args:
+
+| Args | Description |
+|------|-------------|
+| `list` | Show prompt catalog |
+| `preview <slug\|owner/repo>` | Preview template content |
+| `install <slug>[,...]` | Inject template(s) into AGENTS.md as-is |
+| `suggest` | Analyze project → recommend suitable templates |
+| `compose [<slug\|owner/repo>...]` | Synthesize template(s) tailored to this project |
+
+**Static inject:**
+
 ```
-/pi-workspace:prompts
+/pi-workspace:prompts install karpathy
+/pi-workspace:prompts install karpathy,owner/repo
 ```
 
-Two modes:
-
-**Static — inject a known template as-is:**
-
-> "karpathy guidelines를 AGENTS.md에 추가해줘"
-> "pi-workspace:prompts --install karpathy"
-
-Fetches the template from GitHub and inserts it as a labeled block in `AGENTS.md`:
+Fetches from GitHub and inserts as a labeled block in `AGENTS.md`:
 
 ```markdown
 <!-- pi-prompts:karpathy:start -->
-## Karpathy Guidelines
 ...
 <!-- pi-prompts:karpathy:end -->
 ```
 
-Blocks can be updated later with `--force` or via `/pi-workspace:update`.
+**suggest** — let the agent recommend:
 
-**Dynamic — project-aware synthesis (agent mode):**
-
-> "현재 프로젝트에 맞는 에이전트 지침 프롬프트 제안해줘"
-> "추천 프롬프트 합성해줘"
-> "karpathy 가이드라인 참고해서 우리 프로젝트 스타일에 맞게 다듬어줘"
-
-When you say this to an agent that has the skill loaded, the agent will:
-
-1. Browse the prompt catalog and fetch referenced templates
-2. Read your project context — `AGENTS.md`, tech stack, `.pi/settings.json`
-3. Synthesize a tailored version (deduplicated, project-specific rules added)
-4. Propose the result for your review
-5. Write it to `AGENTS.md` only after you approve
-
-> **Note:** Synthesis is done by the AI agent, not the mise task. The task provides data fetching and file writing primitives; the agent provides the intelligence. This works when you're talking to an agent (Claude Code, Codex, pi) that has the skill loaded — running the mise task alone just does static injection.
-
-Custom sources (any public GitHub repo) are also supported:
-
-> "forrestchang/andrej-karpathy-skills 참고해서 합성해줘"
-
-```bash
-mise run prompts -- --preview forrestchang/andrej-karpathy-skills
-mise run prompts -- --target . --install forrestchang/andrej-karpathy-skills
 ```
+/pi-workspace:prompts suggest
+```
+
+The agent runs `mise run prompts -- --context` to collect your project's current AGENTS.md, installed sections, `.pi/settings.json`, and tech stack, then recommends which catalog entries fit and why. You confirm before anything is written.
+
+**compose** — synthesize tailored guidelines:
+
+```
+/pi-workspace:prompts compose
+/pi-workspace:prompts compose karpathy
+/pi-workspace:prompts compose karpathy,forrestchang/andrej-karpathy-skills
+```
+
+The agent collects project context, fetches the specified template(s), then synthesizes a customized version — deduplicating sections, removing conflicts, adding project-specific rules. The result is proposed for your review; written to AGENTS.md only after you approve.
+
+> **Note:** `suggest` and `compose` are agent-executed flows. The mise task provides `--context` (project info collection) and `--write` (file writing); the AI agent provides the synthesis. Running the task alone does static injection only.
 
 ### Verify and update
 

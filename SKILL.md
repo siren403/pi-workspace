@@ -84,71 +84,81 @@ mise run update    -- --target <path>
 
 ## /pi-workspace:prompts 플로우
 
-AGENTS.md에 에이전트 행동 지침 프롬프트를 관리한다. 두 가지 모드가 있다.
+AGENTS.md에 에이전트 행동 지침 프롬프트를 관리한다.
 
-### 정적 모드 (단순 주입)
+### 지원 args
 
-알려진 템플릿을 그대로 AGENTS.md 섹션 마커 블록으로 삽입한다.
+| args | 동작 |
+|------|------|
+| (없음) | 카탈로그 목록 출력 |
+| `list` | 카탈로그 목록 출력 |
+| `preview <slug\|owner/repo>` | 템플릿 내용 출력 |
+| `install <slug>[,<slug\|owner/repo>...]` | AGENTS.md에 정적 주입 |
+| `suggest` | 프로젝트 분석 후 적합한 템플릿 추천 |
+| `compose [<slug\|owner/repo>...]` | 지정 템플릿(들)을 프로젝트에 맞게 합성 |
 
-```bash
-# 카탈로그 확인
-mise run prompts -- --list
+### args → mise task 매핑
 
-# 내용 미리보기
-mise run prompts -- --preview karpathy
-mise run prompts -- --preview forrestchang/andrej-karpathy-skills
+```
+/pi-workspace:prompts list
+  → mise run prompts -- --list
 
-# AGENTS.md에 주입 (섹션 마커로 관리)
-mise run prompts -- --target <path> --install karpathy
-mise run prompts -- --target <path> --install karpathy,owner/repo
+/pi-workspace:prompts preview karpathy
+  → mise run prompts -- --preview karpathy
 
-# 기존 섹션 갱신
-mise run prompts -- --target <path> --install karpathy --force
+/pi-workspace:prompts install karpathy
+  → mise run prompts -- --target <target> --install karpathy
+
+/pi-workspace:prompts install karpathy,owner/repo
+  → mise run prompts -- --target <target> --install karpathy,owner/repo
+
+/pi-workspace:prompts suggest
+  → mise run prompts -- --target <target> --context  ← 컨텍스트 수집
+  → [에이전트가 출력을 분석해 적합한 슬러그 추천 + 이유 설명]
+  → 사용자 확인 후 → install 또는 compose 진행
+
+/pi-workspace:prompts compose
+/pi-workspace:prompts compose karpathy
+/pi-workspace:prompts compose karpathy,owner/repo
+  → mise run prompts -- --target <target> --context  ← 컨텍스트 수집
+  → mise run prompts -- --preview <slug>  (지정된 슬러그 각각)
+  → [에이전트가 프로젝트 컨텍스트 + 템플릿 내용으로 맞춤 합성]
+  → 결과를 사용자에게 제안 — 확인 전 파일에 쓰지 않는다
+  → 승인 후: echo "<합성 내용>" | mise run prompts -- --target <target> --write --section <name>
 ```
 
-섹션 마커 형식:
+### suggest / compose 상세 절차
+
+`suggest`와 `compose` args는 **에이전트가 실행하는 흐름**이다. mise task 자체에 AI가 없다.
+
+1. `--context` 플래그로 프로젝트 정보 수집
+   - 현재 AGENTS.md 내용 및 기존 설치 섹션
+   - `.pi/settings.json` (프로바이더·모델)
+   - `package.json` / `.mise.toml` (기술 스택)
+   - 카탈로그 목록
+
+2. `compose`에 슬러그가 지정된 경우 `--preview`로 각 템플릿 내용 fetch
+
+3. 에이전트가 컨텍스트를 바탕으로:
+   - `suggest`: 적합한 템플릿 추천 + 이유 제시
+   - `compose`: 템플릿 섹션 선별·통합, 중복 제거, 프로젝트 특화 규칙 추가
+
+4. 결과를 사용자에게 제안 — **확인 전에 절대 파일에 쓰지 않는다**
+
+5. 사용자 승인 후 task로 기록:
+   ```bash
+   echo "<합성 내용>" | mise run prompts -- --target <path> --write --section <name>
+   ```
+
+### 섹션 마커 형식
+
 ```
 <!-- pi-prompts:karpathy:start -->
 ...내용...
 <!-- pi-prompts:karpathy:end -->
 ```
 
-이후 `mise run update`로 갱신 가능.
-
-### 동적 모드 (에이전트 합성)
-
-단순 주입이 아닌, 여러 템플릿을 참조해 **현재 프로젝트에 최적화된 지침**을 합성한다.
-컨텍스트 최적화, 중복 제거, 프로젝트 특화 내용 추가가 필요할 때 사용한다.
-
-**플로우:**
-
-1. 카탈로그 및 현재 AGENTS.md 파악
-   ```bash
-   mise run prompts -- --list
-   mise run prompts -- --preview <slug>
-   ```
-
-2. 프로젝트 컨텍스트 분석
-   - `AGENTS.md` 기존 내용
-   - `package.json` / `.mise.toml` — 기술 스택
-   - `.pi/settings.json` — 프로바이더·모델
-   - 주요 소스 파일 구조
-
-3. 합성 작성
-   - 참조한 템플릿에서 프로젝트에 맞는 섹션·규칙을 선별
-   - 중복·상충 항목 제거 및 통합
-   - 프로젝트 특화 규칙 추가 (기술 스택, 보안 요구사항 등)
-   - 결과를 사용자에게 제안 — **확인 전에 파일에 쓰지 않는다**
-
-4. 사용자 확인 후 task로 기록
-   ```bash
-   echo "<합성된 내용>" | mise run prompts -- --target <path> --write --section <name>
-   ```
-
-**원칙:**
-- 합성 내용은 반드시 사용자가 검토·승인한 뒤 기록한다
-- 파일 직접 작성 금지 — 항상 `--write` 태스크를 통해 기록
-- 기존 섹션 마커가 있으면 교체, 없으면 끝에 추가
+기존 마커가 있으면 교체, 없으면 AGENTS.md 끝에 추가.
 
 ## 금지
 

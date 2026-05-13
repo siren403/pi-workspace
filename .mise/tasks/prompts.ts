@@ -8,6 +8,7 @@
  * --install <slug,...>           AGENTS.md에 섹션 주입
  * --source <owner/repo>          카탈로그 외 레포 직접 지정 (--install과 조합 가능)
  * --force                        기존 섹션 강제 덮어쓰기
+ * --context                      프로젝트 컨텍스트 수집·출력 (에이전트 suggest/compose 진입점)
  *
  * [에이전트 합성 모드]
  * echo "<content>" | mise run prompts -- --target <path> --write --section <name>
@@ -20,6 +21,7 @@ const { values } = parseArgs({
   options: {
     target:  { type: "string",  default: "." },
     list:    { type: "boolean", default: false },
+    context: { type: "boolean", default: false },
     preview: { type: "string" },
     install: { type: "string" },
     source:  { type: "string" },
