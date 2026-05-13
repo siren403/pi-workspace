@@ -94,21 +94,7 @@ export async function runScaffold(opts: ScaffoldOptions): Promise<void> {
   await writeManifest(target, manifest);
   console.log("  ✓ .agent-workspace.json");
 
-  // 5. pi install npm:pi-subagents -l
-  console.log("\n[scaffold] Installing required pi packages...\n");
-  const piResult = await $`pi install npm:pi-subagents -l`
-    .cwd(target)
-    .quiet()
-    .nothrow();
-
-  if (piResult.exitCode === 0) {
-    console.log("  ✓ npm:pi-subagents installed (project scope)");
-  } else {
-    console.warn("  ⚠ pi install failed:", piResult.stderr.toString().trim());
-    console.warn("    Run manually: pi install npm:pi-subagents -l");
-  }
-
-  // 6. --install 플래그: mise trust + install + lock
+  // 5. --install 플래그: mise trust + install + lock
   if (opts.install) {
     console.log("\n[scaffold] Running mise install...");
     await $`mise trust`.cwd(target).quiet().nothrow();
@@ -119,6 +105,23 @@ export async function runScaffold(opts: ScaffoldOptions): Promise<void> {
     } else {
       console.warn("  ⚠ mise install failed — run manually: mise install");
     }
+  }
+
+  // 6. pi install npm:pi-subagents -l (mise install 이후 실행)
+  console.log("\n[scaffold] Installing required pi packages...\n");
+  const shimPath = `${process.env.HOME}/.local/share/mise/shims`;
+  const piEnv = { ...process.env, PATH: `${shimPath}:${process.env.PATH}` };
+  const piResult = await $`pi install npm:pi-subagents -l`
+    .cwd(target)
+    .env(piEnv)
+    .quiet()
+    .nothrow();
+
+  if (piResult.exitCode === 0) {
+    console.log("  ✓ npm:pi-subagents installed (project scope)");
+  } else {
+    console.warn("  ⚠ pi install failed:", piResult.stderr.toString().trim());
+    console.warn("    Run manually: pi install npm:pi-subagents -l");
   }
 
   // 7. 결과 출력
