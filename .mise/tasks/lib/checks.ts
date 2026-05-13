@@ -29,11 +29,15 @@ async function checkMise(): Promise<CheckResult> {
 async function checkPi(): Promise<CheckResult> {
   if (await commandExists("pi"))
     return { name: "pi", status: "ok", message: "pi installed" };
+  // mise npm: 백엔드로 설치된 경우 shim 경로 시도
+  const shim = `${process.env.HOME}/.local/share/mise/shims/pi`;
+  if (await Bun.file(shim).exists())
+    return { name: "pi", status: "ok", message: "pi installed (mise shim)" };
   return {
     name: "pi",
-    status: "error",
-    message: "pi not found",
-    fix: "npm install -g @earendil-works/pi-coding-agent",
+    status: "warn",
+    message: "pi not found — install via mise or npm",
+    fix: "mise install  (if .mise.toml has pi)  or  npm install -g @earendil-works/pi-coding-agent",
   };
 }
 
