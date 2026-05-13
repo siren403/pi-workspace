@@ -7,12 +7,17 @@ Works with **pi**, **Claude Code**, **Codex**, and 55+ agents via [skills.sh](ht
 ## Install
 
 ```bash
-# via skills.sh (Claude Code, Codex, Cursor, Windsurf, ...)
+# 전체 서브커맨드를 개별 항목으로 설치 (권장)
+npx skills add siren403/pi-workspace --full-depth
+
+# 메인 스킬만 설치
 npx skills add siren403/pi-workspace
 
 # via pi
 pi install npm:pi-workspace -l
 ```
+
+`--full-depth` 옵션을 사용하면 `/pi-workspace:scaffold`, `/pi-workspace:prompts` 등 서브커맨드가 스킬 목록에 개별 항목으로 노출됩니다.
 
 ## Commands
 
