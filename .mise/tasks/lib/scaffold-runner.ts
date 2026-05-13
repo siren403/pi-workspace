@@ -109,11 +109,8 @@ export async function runScaffold(opts: ScaffoldOptions): Promise<void> {
 
   // 6. pi install npm:pi-subagents -l (mise install 이후 실행)
   console.log("\n[scaffold] Installing required pi packages...\n");
-  const shimPath = `${process.env.HOME}/.local/share/mise/shims`;
-  const piEnv = { ...process.env, PATH: `${shimPath}:${process.env.PATH}` };
-  const piResult = await $`pi install npm:pi-subagents -l`
+  const piResult = await $`mise exec -- pi install npm:pi-subagents -l`
     .cwd(target)
-    .env(piEnv)
     .quiet()
     .nothrow();
 
