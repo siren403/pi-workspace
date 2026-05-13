@@ -1,0 +1,11 @@
+{
+  "name": "pi-workspace",
+  "version": "0.1.0",
+  "description": "YoloBox + Pi + mise agent workspace scaffold skill — works with pi, Claude Code, Codex, and 55+ agents via skills.sh",
+  "keywords": ["pi-package", "skills-sh", "agent-skill", "scaffold", "yolobox", "mise", "pi-coding-agent"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/siren403/pi-workspace.git"
+  }
+}

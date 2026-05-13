@@ -1,0 +1,7 @@
+#!/bin/sh
+#MISE description="pi 명령어 비대화형 실행 — 검증/CI용 (예: mise run agent-shell -- list)"
+exec yolobox run \
+  --mount "$HOME/.pi/agent:/home/yolo/.pi/agent" \
+  --mount "$(npm root -g):/home/yolo/.npm-global/lib/node_modules" \
+  --env NPM_CONFIG_PREFIX=/home/yolo/.npm-global \
+  pi "$@"

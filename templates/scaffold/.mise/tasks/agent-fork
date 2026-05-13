@@ -1,0 +1,9 @@
+#!/bin/sh
+#MISE description="YoloBox fork 모드 — 프로젝트 폴더 격리 후 pi 실행"
+# 첫 번째 인자 = fork 이름 (기본: pi-work)
+FORK_NAME="${1:-pi-work}"
+exec yolobox fork --name "$FORK_NAME" \
+  --mount "$HOME/.pi/agent:/home/yolo/.pi/agent" \
+  --mount "$(npm root -g):/home/yolo/.npm-global/lib/node_modules" \
+  --env NPM_CONFIG_PREFIX=/home/yolo/.npm-global \
+  --env PI_AUTORUN=1
