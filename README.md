@@ -107,24 +107,46 @@ Shows the curated extension catalog with current install status, then installs s
 
 ### Agent instruction prompts
 
-Supported args:
+Three invocation patterns:
+
+---
+
+**1. Smart mode — no args**
+
+```
+/pi-workspace:prompts
+```
+
+Collects project context, then decides what to do:
+
+- No prompt sections in AGENTS.md → enters `suggest` flow
+- Sections exist but templates have updates → proposes refresh
+- Everything up to date → summarizes current config
+
+---
+
+**2. Explicit args**
 
 | Args | Description |
 |------|-------------|
 | `list` | Show prompt catalog |
-| `preview <slug\|owner/repo>` | Preview template content |
-| `install <slug>[,...]` | Inject template(s) into AGENTS.md as-is |
-| `suggest` | Analyze project → recommend suitable templates |
+| `preview <slug\|owner/repo>` | Preview template content from GitHub |
+| `install <slug>[,...]` | Inject template(s) into AGENTS.md as labeled blocks |
+| `suggest` | Analyze project → recommend suitable templates with reasoning |
 | `compose [<slug\|owner/repo>...]` | Synthesize template(s) tailored to this project |
 
-**Static inject:**
-
 ```
+/pi-workspace:prompts list
+/pi-workspace:prompts preview karpathy
 /pi-workspace:prompts install karpathy
 /pi-workspace:prompts install karpathy,owner/repo
+/pi-workspace:prompts suggest
+/pi-workspace:prompts compose
+/pi-workspace:prompts compose karpathy
+/pi-workspace:prompts compose karpathy,owner/repo
 ```
 
-Fetches from GitHub and inserts as a labeled block in `AGENTS.md`:
+`install` injects templates as-is with section markers:
 
 ```markdown
 <!-- pi-prompts:karpathy:start -->
@@ -132,25 +154,31 @@ Fetches from GitHub and inserts as a labeled block in `AGENTS.md`:
 <!-- pi-prompts:karpathy:end -->
 ```
 
-**suggest** — let the agent recommend:
+`suggest` and `compose` collect project context first (`AGENTS.md`, `.pi/settings.json`, tech stack), then the agent analyzes and synthesizes. Results are always proposed for review — nothing is written without your approval.
+
+---
+
+**3. Free-form requests**
 
 ```
-/pi-workspace:prompts suggest
+/pi-workspace:prompts "karpathy 참고해서 합성해줘"
+/pi-workspace:prompts "추천 프롬프트 보여줘"
+/pi-workspace:prompts "현재 프로젝트에 맞게 최적화해줘"
 ```
 
-The agent runs `mise run prompts -- --context` to collect your project's current AGENTS.md, installed sections, `.pi/settings.json`, and tech stack, then recommends which catalog entries fit and why. You confirm before anything is written.
+The agent infers intent and routes to the appropriate flow:
 
-**compose** — synthesize tailored guidelines:
+| Keywords | Routes to |
+|----------|-----------|
+| 합성, 조합, 맞게, 다듬어, 최적화 | `compose` |
+| 추천, 뭐가 좋아, 어떤 거 | `suggest` |
+| 추가, 설치, 넣어줘 + slug/repo | `install` |
+| 보여줘, 내용, 뭐가 있어 | `preview` / `list` |
+| ambiguous | smart mode → ask for clarification |
 
-```
-/pi-workspace:prompts compose
-/pi-workspace:prompts compose karpathy
-/pi-workspace:prompts compose karpathy,forrestchang/andrej-karpathy-skills
-```
+---
 
-The agent collects project context, fetches the specified template(s), then synthesizes a customized version — deduplicating sections, removing conflicts, adding project-specific rules. The result is proposed for your review; written to AGENTS.md only after you approve.
-
-> **Note:** `suggest` and `compose` are agent-executed flows. The mise task provides `--context` (project info collection) and `--write` (file writing); the AI agent provides the synthesis. Running the task alone does static injection only.
+> `suggest` and `compose` are agent-executed flows. The mise task provides `--context` (structured project info) and `--write` (file I/O); the AI agent does the analysis and synthesis. Running the task directly does static injection only.
 
 ### Verify and update
 
