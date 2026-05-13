@@ -90,16 +90,26 @@ AGENTS.md에 에이전트 행동 지침 프롬프트를 관리한다.
 
 | args | 동작 |
 |------|------|
-| (없음) | 카탈로그 목록 출력 |
+| (없음) | **스마트 모드** — 프로젝트 상태 파악 후 다음 행동 제안 |
 | `list` | 카탈로그 목록 출력 |
 | `preview <slug\|owner/repo>` | 템플릿 내용 출력 |
 | `install <slug>[,<slug\|owner/repo>...]` | AGENTS.md에 정적 주입 |
 | `suggest` | 프로젝트 분석 후 적합한 템플릿 추천 |
 | `compose [<slug\|owner/repo>...]` | 지정 템플릿(들)을 프로젝트에 맞게 합성 |
+| `"<자유 요청>"` | 의도를 파악해 위 args 중 적합한 흐름으로 라우팅 |
 
 ### args → mise task 매핑
 
 ```
+# ── 1. 스마트 모드 (args 없음) ──────────────────────────────────────────────
+/pi-workspace:prompts
+  → mise run prompts -- --target <target> --context  ← 프로젝트 상태 수집
+  → 상태별 판단:
+      · AGENTS.md에 pi-prompts 섹션 없음  → suggest 흐름 진입
+      · 섹션 있음 + 오래된 마커 감지      → update/compose 제안
+      · 섹션 있음 + 최신                  → 현재 구성 요약 출력
+
+# ── 2. 명시적 args ───────────────────────────────────────────────────────────
 /pi-workspace:prompts list
   → mise run prompts -- --list
 
@@ -113,18 +123,29 @@ AGENTS.md에 에이전트 행동 지침 프롬프트를 관리한다.
   → mise run prompts -- --target <target> --install karpathy,owner/repo
 
 /pi-workspace:prompts suggest
-  → mise run prompts -- --target <target> --context  ← 컨텍스트 수집
-  → [에이전트가 출력을 분석해 적합한 슬러그 추천 + 이유 설명]
+  → mise run prompts -- --target <target> --context
+  → 에이전트가 출력을 분석해 적합한 슬러그 추천 + 이유 설명
   → 사용자 확인 후 → install 또는 compose 진행
 
 /pi-workspace:prompts compose
 /pi-workspace:prompts compose karpathy
 /pi-workspace:prompts compose karpathy,owner/repo
-  → mise run prompts -- --target <target> --context  ← 컨텍스트 수집
+  → mise run prompts -- --target <target> --context
   → mise run prompts -- --preview <slug>  (지정된 슬러그 각각)
-  → [에이전트가 프로젝트 컨텍스트 + 템플릿 내용으로 맞춤 합성]
+  → 에이전트가 프로젝트 컨텍스트 + 템플릿 내용으로 맞춤 합성
   → 결과를 사용자에게 제안 — 확인 전 파일에 쓰지 않는다
   → 승인 후: echo "<합성 내용>" | mise run prompts -- --target <target> --write --section <name>
+
+# ── 3. 자유 요청 ─────────────────────────────────────────────────────────────
+/pi-workspace:prompts "<자유 요청>"
+  → 의도를 파악해 위 흐름 중 하나로 라우팅한다.
+
+  라우팅 기준:
+  · "추천", "뭐가 좋아", "어떤 거 쓸까"          → suggest
+  · "합성", "조합", "맞게", "다듬어", "최적화"    → compose (슬러그 명시 시 포함)
+  · "추가", "설치", "넣어줘" + 슬러그/레포 명시   → install
+  · "보여줘", "내용", "뭐가 있어"                 → preview 또는 list
+  · 의도 불명확 → 스마트 모드(--context)로 현황 파악 후 되묻기
 ```
 
 ### suggest / compose 상세 절차
