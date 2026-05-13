@@ -1,7 +1,7 @@
 #!/bin/sh
-#MISE description="pi를 YoloBox 샌드박스에서 실행. --version x.y.z 로 pi 버전 일회성 지정 가능"
+#MISE description="pi를 YoloBox 샌드박스에서 실행. mise.lock 기반으로 .yolobox.Dockerfile 자동 동기화"
 
-# --version 플래그 파싱
+# --version 플래그 파싱 (일회성 오버라이드)
 PI_VERSION=""
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -10,21 +10,19 @@ while [ $# -gt 0 ]; do
   esac
 done
 
+# 버전 미지정 시 mise.lock에서 추출
+if [ -z "$PI_VERSION" ] && [ -f mise.lock ]; then
+  PI_VERSION=$(grep -A2 'pi-coding-agent' mise.lock | grep '^version' | sed 's/version = "\(.*\)"/\1/')
+fi
+
+# .yolobox.Dockerfile 동기화
 if [ -n "$PI_VERSION" ]; then
-  TMPFILE=$(mktemp /tmp/yolobox-pi-XXXXXX.Dockerfile)
-  cat > "$TMPFILE" << EOF
+  cat > .yolobox.Dockerfile << EOF
 USER root
 RUN npm install -g --prefix /usr/local @earendil-works/pi-coding-agent@${PI_VERSION}
 RUN echo 'if [ -n "\$PI_AUTORUN" ]; then exec pi; fi' >> /etc/bash.bashrc
 USER yolo
 EOF
-  echo "[pi] Using version override: $PI_VERSION (temp Dockerfile: $TMPFILE)"
-  exec yolobox \
-    --customize-file "$TMPFILE" \
-    --mount "$HOME/.pi/agent:/home/yolo/.pi/agent" \
-    --mount "$(npm root -g):/home/yolo/.npm-global/lib/node_modules" \
-    --env NPM_CONFIG_PREFIX=/home/yolo/.npm-global \
-    --env PI_AUTORUN=1
 fi
 
 exec yolobox \

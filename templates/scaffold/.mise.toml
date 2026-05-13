@@ -3,15 +3,18 @@ node = "24"
 "npm:@earendil-works/pi-coding-agent" = "latest"
 
 [tasks."pi:version"]
-description = "sandbox pi 버전 변경 (Dockerfile 갱신 + rebuild 예약). 예: mise run pi:version -- 0.75.0"
+description = "sandbox pi 버전 변경. mise.toml 핀 + mise lock + .yolobox.Dockerfile 동기화. 예: mise run pi:version -- 0.75.0"
 run = """
 VERSION=${1:?Usage: mise run pi:version -- <x.y.z>}
-DOCKERFILE=".yolobox.Dockerfile"
-if [ ! -f "$DOCKERFILE" ]; then
-  echo "Error: $DOCKERFILE not found" >&2
-  exit 1
-fi
-sed -i "s/@earendil-works\\/pi-coding-agent@[0-9][0-9.]*/@earendil-works\\/pi-coding-agent@${VERSION}/" "$DOCKERFILE"
-echo "[pi:version] .yolobox.Dockerfile updated → @earendil-works/pi-coding-agent@${VERSION}"
-echo "             Next 'mise run pi' will rebuild the sandbox image."
+sed -i "s/\\(\"npm:@earendil-works\\/pi-coding-agent\" = \\)\"[^\"]*\"/\\1\"${VERSION}\"/" .mise.toml
+mise lock
+PI_VERSION=$(grep -A2 'pi-coding-agent' mise.lock | grep '^version' | sed 's/version = "\\(.*\\)"/\\1/')
+cat > .yolobox.Dockerfile << EOF
+USER root
+RUN npm install -g --prefix /usr/local @earendil-works/pi-coding-agent@${PI_VERSION}
+RUN echo 'if [ -n "\\$PI_AUTORUN" ]; then exec pi; fi' >> /etc/bash.bashrc
+USER yolo
+EOF
+echo "[pi:version] Updated → @earendil-works/pi-coding-agent@${PI_VERSION}"
+echo "             mise.lock and .yolobox.Dockerfile synced. Commit both files."
 """
