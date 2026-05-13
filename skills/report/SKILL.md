@@ -1,5 +1,5 @@
 ---
-name: pi-workspace:report
+name: pi-workspace-report
 description: pi-workspace 사용 중 발생한 이슈를 GitHub에 리포팅한다. 환경 정보와 doctor 결과를 자동 수집해 이슈 초안을 생성하거나 직접 제출한다.
 ---
 

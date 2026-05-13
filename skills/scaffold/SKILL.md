@@ -1,5 +1,5 @@
 ---
-name: pi-workspace:scaffold
+name: pi-workspace-scaffold
 description: YoloBox + Pi + mise workspace를 새 프로젝트에 생성한다. doctor → scaffold → verify 순서로 실행하며 ERROR 시 중단한다.
 ---
 

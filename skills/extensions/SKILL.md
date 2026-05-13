@@ -1,5 +1,5 @@
 ---
-name: pi-workspace:extensions
+name: pi-workspace-extensions
 description: pi 확장 패키지 카탈로그를 조회하고 프로젝트 스코프로 설치한다. pi install -l 명령을 사용해 프로젝트 단위로 관리한다.
 ---
 

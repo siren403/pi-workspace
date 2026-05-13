@@ -1,5 +1,5 @@
 ---
-name: pi-workspace:doctor
+name: pi-workspace-doctor
 description: pi-workspace 환경 상태를 점검한다. mise, pi, YoloBox, pi 인증, 타겟 쓰기 권한, 시크릿 노출 여부를 확인하고 결과를 보고한다.
 ---
 
