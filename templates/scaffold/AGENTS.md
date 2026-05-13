@@ -11,6 +11,13 @@ mise run pi:fork -- feature-name  # 이름 지정
 mise run pi:shell -- list         # 비대화형 검증
 ```
 
+> **pi-workspace 스킬 태스크** (scaffold, subagents, prompts 등)는 프로젝트 루트가 아닌
+> 스킬 디렉토리에서 실행해야 합니다:
+> ```bash
+> cd .agents/skills/pi-workspace   # 또는 .pi/skills/pi-workspace
+> mise run subagents -- --target <project>
+> ```
+
 ## 서브에이전트
 
 pi-subagents가 설치된 경우 서브에이전트를 활용합니다.

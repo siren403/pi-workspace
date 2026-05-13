@@ -188,8 +188,8 @@ export interface SubagentsOptions {
 }
 
 export async function runSubagents(opts: SubagentsOptions): Promise<void> {
-  // pi-subagents 설치 확인
-  const listResult = await $`pi list`.quiet().nothrow();
+  // pi-subagents 설치 확인 (target 디렉토리 기준으로 project scope 검사)
+  const listResult = await $`mise exec -- pi list`.cwd(resolve(opts.target)).quiet().nothrow();
   const piList = listResult.stdout.toString();
   if (!piList.includes("pi-subagents")) {
     console.error("[subagents] pi-subagents not installed in project scope.");
