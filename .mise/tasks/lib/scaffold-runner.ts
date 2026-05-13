@@ -141,18 +141,15 @@ function printNextSteps(): void {
 
 Next steps:
 
-  1. 도구 설치 (node + pi):
-       mise install
-
-  2. pi 확장 설치 (선택):
+  1. pi 확장 설치 (선택):
        /pi-workspace:extensions
 
-  3. 프로바이더 로그인 후 서브에이전트 구성:
+  2. 프로바이더 로그인 후 서브에이전트 구성:
        pi /login
        pi install npm:pi-subagents -l
        /pi-workspace:subagents
 
-  4. 에이전트 실행:
+  3. 에이전트 실행:
        mise run pi
 `);
 }

@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
- * mise run scaffold -- --target <path> [--force] [--check] [--diff] [--install]
- * doctor 통과 후 workspace 파일 생성 + pi install -l 실행.
+ * mise run scaffold -- --target <path> [--force] [--check] [--diff] [--no-install]
+ * doctor 통과 후 workspace 파일 생성 + mise install + pi install -l 실행.
  */
 import { runDoctor } from "./lib/checks.ts";
 import { runScaffold } from "./lib/scaffold-runner.ts";
@@ -14,7 +14,7 @@ const { values } = parseArgs({
     force:   { type: "boolean", default: false },
     check:   { type: "boolean", default: false },
     diff:    { type: "boolean", default: false },
-    install: { type: "boolean", default: false },
+    install: { type: "boolean", default: true },
   },
 });
 
