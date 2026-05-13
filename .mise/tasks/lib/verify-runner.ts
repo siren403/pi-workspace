@@ -81,7 +81,7 @@ async function checkGitignore(target: string): Promise<Check> {
 }
 
 async function checkTaskExecutable(target: string): Promise<Check[]> {
-  const tasks = ["agent", "agent-fork", "agent-shell"];
+  const tasks = ["pi", "pi:fork", "pi:shell"];
   const checks: Check[] = [];
   for (const name of tasks) {
     const path = resolve(target, ".mise", "tasks", name);

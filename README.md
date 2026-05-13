@@ -4,6 +4,23 @@ YoloBox + Pi + mise agent workspace scaffold skill.
 
 Works with **pi**, **Claude Code**, **Codex**, and 55+ agents via [skills.sh](https://skills.sh).
 
+## Agent Install
+
+저장소 링크만 공유하면 에이전트가 직접 설치합니다.
+
+> **Claude Code / Codex / Cursor 등에게:**
+>
+> `https://github.com/siren403/pi-workspace` 스킬을 full-depth로 설치해줘.
+
+에이전트가 실행할 명령:
+
+```bash
+mkdir -p .claude
+npx skills add siren403/pi-workspace --full-depth
+```
+
+---
+
 ## Install
 
 ```bash
