@@ -63,8 +63,13 @@ fi
 NPM_GLOBAL_ROOT=$(mise exec -- npm root -g 2>/dev/null || npm root -g)
 PI_AUTORUN_CMD="pi${PI_ARGS:+ $PI_ARGS}"
 
-exec yolobox \
+yolobox \
   --mount "$HOME/.pi/agent:/home/yolo/.pi/agent" \
   --mount "$NPM_GLOBAL_ROOT:/home/yolo/.npm-global/lib/node_modules" \
   --env NPM_CONFIG_PREFIX=/home/yolo/.npm-global \
   --env PI_AUTORUN_CMD="$PI_AUTORUN_CMD"
+
+# 세션 종료 후: yolobox-custom 이미지 중 최신 1개만 남기고 구버전 정리
+docker image ls --format "{{.ID}}" --filter "reference=yolobox-custom:*" 2>/dev/null \
+  | tail -n +2 \
+  | xargs -r docker image rm 2>/dev/null || true
