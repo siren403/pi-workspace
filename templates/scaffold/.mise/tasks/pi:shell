@@ -1,7 +1,9 @@
 #!/bin/sh
 #MISE description="pi 명령어 비대화형 실행 — 검증/CI용 (예: mise run agent-shell -- list)"
+NPM_GLOBAL_ROOT=$(mise exec -- npm root -g 2>/dev/null || npm root -g)
+
 exec yolobox run \
   --mount "$HOME/.pi/agent:/home/yolo/.pi/agent" \
-  --mount "$(npm root -g):/home/yolo/.npm-global/lib/node_modules" \
+  --mount "$NPM_GLOBAL_ROOT:/home/yolo/.npm-global/lib/node_modules" \
   --env NPM_CONFIG_PREFIX=/home/yolo/.npm-global \
   pi "$@"

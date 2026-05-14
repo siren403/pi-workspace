@@ -6,10 +6,15 @@
 
 ```bash
 mise run pi              # pi 세션 시작 (기본)
+mise run pi -- -c        # 이전 pi 세션 계속하기
 mise run pi:fork         # 폴더 격리 환경에서 실행
 mise run pi:fork -- feature-name  # 이름 지정
 mise run pi:shell -- list         # 비대화형 검증
 ```
+
+비대화형 agent/tool shell에서 `node`, `npm`, `pi install`을 직접 실행해야 하면
+프로젝트의 `.mise.toml` 런타임을 사용하도록 `mise exec -- <command>`로 감싼다.
+예: `mise exec -- node -v`, `mise exec -- pi install npm:pi-subagents -l`.
 
 > **pi-workspace 스킬 태스크** (scaffold, subagents, prompts 등)는 프로젝트 루트가 아닌
 > 스킬 디렉토리에서 실행해야 합니다:

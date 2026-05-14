@@ -1,12 +1,41 @@
 #!/bin/sh
 #MISE description="pi를 YoloBox 샌드박스에서 실행. mise.lock 기반으로 .yolobox.Dockerfile 자동 동기화"
 
-# --version 플래그 파싱 (일회성 오버라이드)
+# --pi-version 플래그 파싱 (일회성 오버라이드).
+# 호환성을 위해 값이 딸린 --version도 오버라이드로 처리하고, 단독 --version은 pi CLI로 전달한다.
+# 그 외 인자는 pi CLI로 전달한다. 예: mise run pi -- -c
 PI_VERSION=""
+PI_ARGS=""
+quote_arg() {
+  # POSIX-safe single-quote escaping for sh -lc in the sandbox.
+  printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"
+}
 while [ $# -gt 0 ]; do
   case "$1" in
-    --version) PI_VERSION="$2"; shift 2 ;;
-    *) shift ;;
+    --pi-version)
+      PI_VERSION="${2:?Usage: mise run pi -- --pi-version <x.y.z>}"
+      shift 2
+      ;;
+    --version)
+      if [ $# -ge 2 ]; then
+        PI_VERSION="$2"
+        shift 2
+      else
+        PI_ARGS="${PI_ARGS}${PI_ARGS:+ }$(quote_arg "$1")"
+        shift
+      fi
+      ;;
+    --)
+      shift
+      while [ $# -gt 0 ]; do
+        PI_ARGS="${PI_ARGS}${PI_ARGS:+ }$(quote_arg "$1")"
+        shift
+      done
+      ;;
+    *)
+      PI_ARGS="${PI_ARGS}${PI_ARGS:+ }$(quote_arg "$1")"
+      shift
+      ;;
   esac
 done
 
@@ -17,16 +46,25 @@ fi
 
 # .yolobox.Dockerfile 동기화
 if [ -n "$PI_VERSION" ]; then
+  case "$PI_VERSION" in
+    *[!0-9A-Za-z._+-]*)
+      echo "[pi] invalid --version: $PI_VERSION" >&2
+      exit 2
+      ;;
+  esac
   cat > .yolobox.Dockerfile << EOF
 USER root
 RUN npm install -g --prefix /usr/local @earendil-works/pi-coding-agent@${PI_VERSION}
-RUN echo 'if [ -n "\$PI_AUTORUN" ]; then exec pi; fi' >> /etc/bash.bashrc
+RUN echo 'if [ -n "\$PI_AUTORUN_CMD" ]; then exec sh -lc "\$PI_AUTORUN_CMD"; elif [ -n "\$PI_AUTORUN" ]; then exec pi; fi' >> /etc/bash.bashrc
 USER yolo
 EOF
 fi
 
+NPM_GLOBAL_ROOT=$(mise exec -- npm root -g 2>/dev/null || npm root -g)
+PI_AUTORUN_CMD="pi${PI_ARGS:+ $PI_ARGS}"
+
 exec yolobox \
   --mount "$HOME/.pi/agent:/home/yolo/.pi/agent" \
-  --mount "$(npm root -g):/home/yolo/.npm-global/lib/node_modules" \
+  --mount "$NPM_GLOBAL_ROOT:/home/yolo/.npm-global/lib/node_modules" \
   --env NPM_CONFIG_PREFIX=/home/yolo/.npm-global \
-  --env PI_AUTORUN=1
+  --env PI_AUTORUN_CMD="$PI_AUTORUN_CMD"

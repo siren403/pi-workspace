@@ -1,9 +1,36 @@
 #!/bin/sh
 #MISE description="YoloBox fork 모드 — 프로젝트 폴더 격리 후 pi 실행"
-# 첫 번째 인자 = fork 이름 (기본: pi-fork)
-FORK_NAME="${1:-pi-fork}"
+# 첫 번째 비옵션 인자 = fork 이름 (기본: pi-fork). 이후 인자는 pi CLI로 전달.
+case "${1-}" in
+  "") FORK_NAME="pi-fork" ;;
+  --) FORK_NAME="pi-fork"; shift ;;
+  -*) FORK_NAME="pi-fork" ;;
+  *) FORK_NAME="$1"; shift ;;
+esac
+PI_ARGS=""
+quote_arg() {
+  printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"
+}
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --)
+      shift
+      while [ $# -gt 0 ]; do
+        PI_ARGS="${PI_ARGS}${PI_ARGS:+ }$(quote_arg "$1")"
+        shift
+      done
+      ;;
+    *)
+      PI_ARGS="${PI_ARGS}${PI_ARGS:+ }$(quote_arg "$1")"
+      shift
+      ;;
+  esac
+done
+NPM_GLOBAL_ROOT=$(mise exec -- npm root -g 2>/dev/null || npm root -g)
+PI_AUTORUN_CMD="pi${PI_ARGS:+ $PI_ARGS}"
+
 exec yolobox fork --name "$FORK_NAME" \
   --mount "$HOME/.pi/agent:/home/yolo/.pi/agent" \
-  --mount "$(npm root -g):/home/yolo/.npm-global/lib/node_modules" \
+  --mount "$NPM_GLOBAL_ROOT:/home/yolo/.npm-global/lib/node_modules" \
   --env NPM_CONFIG_PREFIX=/home/yolo/.npm-global \
-  --env PI_AUTORUN=1
+  --env PI_AUTORUN_CMD="$PI_AUTORUN_CMD"

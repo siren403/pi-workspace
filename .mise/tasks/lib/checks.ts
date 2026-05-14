@@ -1,4 +1,5 @@
 import { $ } from "bun";
+import { stat } from "fs/promises";
 import { resolve } from "path";
 
 export type CheckStatus = "ok" | "warn" | "error";
@@ -41,9 +42,13 @@ async function checkPi(): Promise<CheckResult> {
   };
 }
 
-async function checkPiVersion(): Promise<CheckResult> {
+async function checkPiVersion(target: string): Promise<CheckResult> {
   const MIN = [0, 70, 0];
-  const r = await $`pi --version`.quiet().nothrow();
+  // Prefer the target project's mise runtime so Node/npm-backed pi resolves from its .mise.toml.
+  const abs = resolve(target);
+  const cwd = await stat(abs).then((s) => s.isDirectory() ? abs : process.cwd()).catch(() => process.cwd());
+  let r = await $`mise exec -- pi --version`.cwd(cwd).quiet().nothrow();
+  if (r.exitCode !== 0) r = await $`pi --version`.cwd(cwd).quiet().nothrow();
   if (r.exitCode !== 0)
     return { name: "pi-version", status: "warn", message: "could not read pi version" };
   // pi --version writes to stdout; fall back to stderr if empty
@@ -131,7 +136,7 @@ export async function runDoctor(target: string): Promise<number> {
   const results = await Promise.all([
     checkMise(),
     checkPi(),
-    checkPiVersion(),
+    checkPiVersion(target),
     checkYolobox(),
     checkAuth(),
     checkTargetWritable(target),
