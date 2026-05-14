@@ -1,6 +1,12 @@
 import { $ } from "bun";
 import { stat } from "fs/promises";
-import { resolve } from "path";
+import { resolve, join } from "path";
+import { readManifest } from "./manifest.ts";
+
+const TEMPLATES_DIR = resolve(import.meta.dir, "../../../templates/scaffold");
+const AGENT_FILE_CONTENT: Record<string, string> = {
+  "CLAUDE.md": "@AGENTS.md\n",
+};
 
 export type CheckStatus = "ok" | "warn" | "error";
 
@@ -106,6 +112,33 @@ async function checkTargetWritable(target: string): Promise<CheckResult> {
   };
 }
 
+async function checkScaffoldSync(target: string): Promise<CheckResult | null> {
+  const manifest = await readManifest(target);
+  if (!manifest) return null;
+
+  const outOfSync: string[] = [];
+  for (const relPath of manifest.managedFiles) {
+    if (relPath === ".agent-workspace.json") continue;
+    const destContent = await Bun.file(resolve(target, relPath)).exists()
+      ? await Bun.file(resolve(target, relPath)).text()
+      : null;
+    const templatePath = join(TEMPLATES_DIR, relPath);
+    const expected = await Bun.file(templatePath).exists()
+      ? await Bun.file(templatePath).text()
+      : AGENT_FILE_CONTENT[relPath] ?? null;
+    if (expected !== null && destContent !== expected) outOfSync.push(relPath);
+  }
+
+  if (outOfSync.length === 0)
+    return { name: "scaffold-sync", status: "ok", message: "All managed files up to date" };
+  return {
+    name: "scaffold-sync",
+    status: "warn",
+    message: `${outOfSync.length} managed file(s) out of sync: ${outOfSync.join(", ")}`,
+    fix: "/pi-workspace:scaffold  (또는 mise run scaffold -- --force --target <path>)",
+  };
+}
+
 async function checkClaudeMd(target: string): Promise<CheckResult | null> {
   // 아직 scaffold 안 된 프로젝트는 CLAUDE.md가 없는 게 정상 — 스킵
   if (!await Bun.file(resolve(target, ".agent-workspace.json")).exists()) return null;
@@ -157,6 +190,7 @@ export async function runDoctor(target: string): Promise<number> {
     checkAuth(),
     checkTargetWritable(target),
     checkNoSecret(target),
+    checkScaffoldSync(target),
     checkClaudeMd(target),
   ]);
   const results = raw.filter((r): r is CheckResult => r !== null);
