@@ -1,5 +1,5 @@
 import { resolve, relative, dirname, join } from "path";
-import { readdir, chmod } from "fs/promises";
+import { readdir, chmod, stat } from "fs/promises";
 import { $ } from "bun";
 import { writeFile, diffFile } from "./fs.ts";
 import { writeManifest, defaultManifest, type Manifest } from "./manifest.ts";
@@ -7,6 +7,18 @@ import { injectGitignore } from "./gitignore.ts";
 
 const TEMPLATES_DIR = resolve(import.meta.dir, "../../../templates/scaffold");
 const EXECUTABLE_TASKS = ["pi", "pi:fork", "pi:shell", "pi:version"];
+
+const AGENT_FILES: Record<string, { path: string; content: string }> = {
+  claude: { path: "CLAUDE.md", content: "@AGENTS.md\n" },
+};
+
+async function detectAgents(target: string): Promise<string[]> {
+  const agents: string[] = [];
+  const claudeBin = await $`which claude`.quiet().nothrow();
+  const claudeDir = await stat(join(target, ".claude")).then(s => s.isDirectory()).catch(() => false);
+  if (claudeBin.exitCode === 0 || claudeDir) agents.push("claude");
+  return agents;
+}
 
 export interface ScaffoldOptions {
   target: string;
@@ -65,12 +77,32 @@ export async function runScaffold(opts: ScaffoldOptions): Promise<void> {
     actions.push({ relPath, result });
   }
 
-  if (opts.diff || opts.check) {
-    printActions(actions, opts.check);
+  // 2. 에이전트 감지 후 전용 설정 파일 생성
+  const agents = await detectAgents(target);
+  for (const agent of agents) {
+    const { path: relPath, content } = AGENT_FILES[agent];
+    const destPath = resolve(target, relPath);
+
+    if (opts.diff) {
+      await diffFile(destPath, content);
+      continue;
+    }
+    if (opts.check) {
+      const exists = await Bun.file(destPath).exists();
+      actions.push({ relPath, result: exists ? "would-update" : "would-create" });
+      continue;
+    }
+    const result = await writeFile(destPath, content, { force: opts.force, managed: true });
+    actions.push({ relPath, result });
+  }
+
+  if (opts.diff) return;
+  if (opts.check) {
+    printActions(actions, true);
     return;
   }
 
-  // 2. task 파일 실행 권한
+  // 3. task 파일 실행 권한
   for (const name of EXECUTABLE_TASKS) {
     const taskPath = resolve(target, ".mise", "tasks", name);
     if (await Bun.file(taskPath).exists()) {
@@ -78,12 +110,13 @@ export async function runScaffold(opts: ScaffoldOptions): Promise<void> {
     }
   }
 
-  // 3. .gitignore pi 패턴 주입
+  // 4. .gitignore pi 패턴 주입
   const giResult = await injectGitignore(target);
   console.log(`  ${giResult === "injected" ? "✓" : "·"} .gitignore pi patterns ${giResult}`);
 
-  // 4. manifest 생성
+  // 5. manifest 생성
   const managedFiles = templateFiles.map((f) => relative(TEMPLATES_DIR, f));
+  managedFiles.push(...agents.map((a) => AGENT_FILES[a].path));
   managedFiles.push(".agent-workspace.json");
 
   const manifest: Manifest = {
@@ -94,7 +127,7 @@ export async function runScaffold(opts: ScaffoldOptions): Promise<void> {
   await writeManifest(target, manifest);
   console.log("  ✓ .agent-workspace.json");
 
-  // 5. --install 플래그: mise trust + install + lock
+  // 6. --install 플래그: mise trust + install + lock
   if (opts.install) {
     console.log("\n[scaffold] Running mise install...");
     await $`mise trust`.cwd(target).quiet().nothrow();
