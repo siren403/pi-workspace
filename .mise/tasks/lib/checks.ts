@@ -106,6 +106,20 @@ async function checkTargetWritable(target: string): Promise<CheckResult> {
   };
 }
 
+async function checkClaudeMd(target: string): Promise<CheckResult | null> {
+  const claudeBin = await $`which claude`.quiet().nothrow();
+  const claudeDir = await stat(resolve(target, ".claude")).then(s => s.isDirectory()).catch(() => false);
+  if (claudeBin.exitCode !== 0 && !claudeDir) return null; // Claude Code 미사용 환경 — 체크 스킵
+  if (await Bun.file(resolve(target, "CLAUDE.md")).exists())
+    return { name: "claude-md", status: "ok", message: "CLAUDE.md exists" };
+  return {
+    name: "claude-md",
+    status: "warn",
+    message: "CLAUDE.md missing — Claude Code가 AGENTS.md 규칙을 읽지 못합니다",
+    fix: "/pi-workspace:scaffold  (또는 mise run scaffold -- --target <path>)",
+  };
+}
+
 async function checkNoSecret(target: string): Promise<CheckResult> {
   const abs = resolve(target);
   const forbidden = ["auth.json", ".env"];
@@ -133,7 +147,7 @@ function print(results: CheckResult[]): void {
 /** Returns 0 if no errors, 1 if any error. */
 export async function runDoctor(target: string): Promise<number> {
   console.log("\n[doctor] Checking environment...\n");
-  const results = await Promise.all([
+  const raw = await Promise.all([
     checkMise(),
     checkPi(),
     checkPiVersion(target),
@@ -141,7 +155,9 @@ export async function runDoctor(target: string): Promise<number> {
     checkAuth(),
     checkTargetWritable(target),
     checkNoSecret(target),
+    checkClaudeMd(target),
   ]);
+  const results = raw.filter((r): r is CheckResult => r !== null);
   print(results);
   const errors = results.filter((r) => r.status === "error");
   const warns = results.filter((r) => r.status === "warn");
