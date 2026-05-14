@@ -107,9 +107,11 @@ async function checkTargetWritable(target: string): Promise<CheckResult> {
 }
 
 async function checkClaudeMd(target: string): Promise<CheckResult | null> {
+  // 아직 scaffold 안 된 프로젝트는 CLAUDE.md가 없는 게 정상 — 스킵
+  if (!await Bun.file(resolve(target, ".agent-workspace.json")).exists()) return null;
   const claudeBin = await $`which claude`.quiet().nothrow();
   const claudeDir = await stat(resolve(target, ".claude")).then(s => s.isDirectory()).catch(() => false);
-  if (claudeBin.exitCode !== 0 && !claudeDir) return null; // Claude Code 미사용 환경 — 체크 스킵
+  if (claudeBin.exitCode !== 0 && !claudeDir) return null; // Claude Code 미사용 환경 — 스킵
   if (await Bun.file(resolve(target, "CLAUDE.md")).exists())
     return { name: "claude-md", status: "ok", message: "CLAUDE.md exists" };
   return {
