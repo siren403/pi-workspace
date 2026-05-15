@@ -129,59 +129,55 @@ function buildPlan(intent: string, target: Awaited<ReturnType<typeof inspectTarg
   }
 
   plan.push({
-    action: "mise run doctor -- --target <target>",
+    action: "/pi-workspace:doctor",
     reason: "validate mise/pi/yolobox/auth/writability before changing project files",
   });
 
   if (!target.manifest) {
     plan.push({
-      action: "mise run scaffold -- --target <target>",
+      action: "/pi-workspace:scaffold",
       reason: wantsSetup ? "requested setup and no workspace manifest exists" : "no .agent-workspace.json found",
     });
     plan.push({
-      action: "mise run verify -- --target <target>",
+      action: "/pi-workspace:verify",
       reason: "verify generated workspace files after scaffold",
     });
     return plan;
   }
 
   plan.push({
-    action: "mise run verify -- --target <target>",
+    action: "/pi-workspace:verify",
     reason: "workspace manifest exists, so check generated files and pi package registration",
   });
 
   if (target.drift.missing.length > 0 || target.drift.outOfSync.length > 0 || target.missingGitignore.length > 0) {
     plan.push({
-      action: "mise run update -- --target <target> --diff",
-      reason: "review managed file/template drift before overwriting anything",
+      action: "/pi-workspace:update",
+      reason: "review managed file/template drift, then apply refresh after user approval",
     });
     plan.push({
-      action: "mise run update -- --target <target> --force",
-      reason: "apply managed file/template refresh after user approval",
-    });
-    plan.push({
-      action: "mise run verify -- --target <target>",
+      action: "/pi-workspace:verify",
       reason: "confirm workspace after update",
     });
   }
 
   if (wantsSubagents || (target.agentOverrideNames.length === 0 && target.missingPackages.length === 0)) {
     plan.push({
-      action: "mise run subagents -- --target <target>",
+      action: "/pi-workspace:subagents",
       reason: wantsSubagents ? "requested sub-agent/model setup" : "pi-subagents is installed but no agentOverrides were found",
     });
   }
 
   if (wantsPrompt || target.promptSections.length === 0) {
     plan.push({
-      action: "mise run prompts -- --target <target> --context",
+      action: "/pi-workspace:prompts suggest",
       reason: wantsPrompt ? "requested prompt/AGENTS.md work" : "no pi-prompts sections found in AGENTS.md",
     });
   }
 
   if (wantsReport) {
     plan.push({
-      action: "mise run report -- --target <target> --context",
+      action: "/pi-workspace:report",
       reason: "requested issue reporting",
     });
   }
