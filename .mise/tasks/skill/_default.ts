@@ -2,6 +2,7 @@
 console.log(`pi-workspace skill helper tasks
 
   mise run skill:doctor -- --target .
+  mise run skill:status -- --target . --intent "check this workspace"
   mise run skill:verify -- --target <scaffolded-project>
   mise run skill:install-check
 

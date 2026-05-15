@@ -83,10 +83,10 @@ Start here unless you already know the exact primitive command.
 
 Smart mode:
 
-1. Checks whether full-depth install is available, and suggests reinstall if subcommands are missing.
-2. Runs doctor to validate mise, pi, YoloBox, auth, target writability, and secret safety.
-3. Detects workspace state and proposes the next action.
-4. Runs the selected primitive only after confirmation when files or settings will change.
+1. Runs `mise run status -- --target <path> --intent "<user request>"`.
+2. Checks skill reinstall/update needs, workspace state, managed file drift, pi packages, sub-agent config, prompt sections, and gitignore coverage.
+3. Summarizes the suggested plan.
+4. Runs doctor/verify/update/scaffold or another primitive only after confirmation when files or settings will change.
 
 Typical routing:
 
@@ -265,6 +265,7 @@ cd .pi/skills/pi-workspace   # or wherever the skill is installed
 mise trust                    # required the first time in a new install path
 
 mise run doctor    -- --target <path>
+mise run status    -- --target <path> [--intent "update this workspace"]
 mise run scaffold  -- --target <path> [--force] [--check] [--diff]
 mise run subagents -- --target <path> [--apply] \
                       [--explore provider/model] \
