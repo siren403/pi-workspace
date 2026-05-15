@@ -73,12 +73,16 @@ async function inspectTarget(target: string) {
   const absTarget = resolve(target);
   const manifest = await readManifest(absTarget);
   const drift = await countManagedDrift(absTarget);
-  const settings = await readJson<{ packages?: string[]; agentOverrides?: Record<string, unknown> }>(
+  const settings = await readJson<{
+    packages?: string[];
+    agentOverrides?: Record<string, unknown>;
+    subagents?: { agentOverrides?: Record<string, unknown> };
+  }>(
     resolve(absTarget, ".pi", "settings.json"),
   );
   const packages = settings?.packages ?? [];
   const missingPackages = REQUIRED_PACKAGES.filter((pkg) => !packages.includes(pkg));
-  const agentOverrides = settings?.agentOverrides ?? {};
+  const agentOverrides = settings?.agentOverrides ?? settings?.subagents?.agentOverrides ?? {};
   const promptText = await exists(resolve(absTarget, "AGENTS.md"))
     ? await Bun.file(resolve(absTarget, "AGENTS.md")).text()
     : "";
@@ -148,8 +152,12 @@ function buildPlan(intent: string, target: Awaited<ReturnType<typeof inspectTarg
 
   if (target.drift.missing.length > 0 || target.drift.outOfSync.length > 0 || target.missingGitignore.length > 0) {
     plan.push({
-      action: "mise run update -- --target <target>",
-      reason: "managed files, templates, or gitignore patterns may need refresh",
+      action: "mise run update -- --target <target> --diff",
+      reason: "review managed file/template drift before overwriting anything",
+    });
+    plan.push({
+      action: "mise run update -- --target <target> --force",
+      reason: "apply managed file/template refresh after user approval",
     });
     plan.push({
       action: "mise run verify -- --target <target>",
