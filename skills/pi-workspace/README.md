@@ -48,16 +48,20 @@ pi install npm:pi-workspace -l
 
 ## Commands
 
-| Command | Description |
-|---------|-------------|
-| `/pi-workspace` | Doctor check → suggest next step |
-| `/pi-workspace:scaffold` | Scaffold workspace in a new project |
+Use `/pi-workspace` as the default entry point. It runs smart mode: diagnose the current project, decide which primitive command is relevant, propose a plan, then proceed after confirmation.
+
+Primitive commands are available for explicit workflows and automation:
+
+| Command | Purpose |
+|---------|---------|
+| `/pi-workspace` | Smart mode: diagnose → route → propose plan → execute after approval |
+| `/pi-workspace:doctor` | Check whether the environment can run pi-workspace tasks |
+| `/pi-workspace:verify` | Check whether an existing workspace matches expected files/config |
+| `/pi-workspace:scaffold` | Create a new workspace |
+| `/pi-workspace:update` | Re-apply managed files from templates |
 | `/pi-workspace:subagents` | Configure sub-agents from authenticated providers |
 | `/pi-workspace:extensions` | Browse and install pi extension catalog |
 | `/pi-workspace:prompts` | Manage and synthesize agent instruction prompts |
-| `/pi-workspace:verify` | Verify workspace integrity |
-| `/pi-workspace:update` | Update managed files from templates |
-| `/pi-workspace:doctor` | Check environment only |
 
 ## Prerequisites
 
@@ -69,7 +73,36 @@ pi install npm:pi-workspace -l
 
 ## Usage
 
+### Smart mode
+
+Start here unless you already know the exact primitive command.
+
+```
+/pi-workspace
+```
+
+Smart mode:
+
+1. Checks whether full-depth install is available, and suggests reinstall if subcommands are missing.
+2. Runs doctor to validate mise, pi, YoloBox, auth, target writability, and secret safety.
+3. Detects workspace state and proposes the next action.
+4. Runs the selected primitive only after confirmation when files or settings will change.
+
+Typical routing:
+
+| Situation | Suggested action |
+|-----------|------------------|
+| No `.agent-workspace.json` | scaffold |
+| Existing workspace | verify |
+| Version/update check | doctor → verify, then update if needed |
+| Missing or stale managed files | update → verify |
+| No sub-agent config | subagents |
+| Prompt instructions needed | prompts suggest/compose |
+| Bug report needed | report |
+
 ### New project setup
+
+Explicit setup command:
 
 ```
 /pi-workspace:scaffold
@@ -87,7 +120,7 @@ AGENTS.md               — project-level agent instructions
 .mise/tasks/pi:shell    — shell into sandbox (debug)
 ```
 
-### Environment check
+### Environment and workspace checks
 
 ```
 /pi-workspace:doctor
@@ -96,10 +129,12 @@ AGENTS.md               — project-level agent instructions
 Checks: mise, pi, pi version ≥ 0.70, YoloBox, pi auth, target writable, no secrets committed.
 
 ```
-/pi-workspace
+/pi-workspace:verify
 ```
 
-Same check, but also suggests what to do next based on current state.
+Checks generated workspace files, project pi package registration, executable mise tasks, and secret safety.
+
+For version updates or reinstall validation, use `/pi-workspace` first. It will run doctor and propose verify/update when the target project has an existing workspace.
 
 ### Configure sub-agents
 

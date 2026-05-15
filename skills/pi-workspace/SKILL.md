@@ -7,18 +7,24 @@ description: YoloBox + Pi + mise agent workspace를 관리한다. 초기화·검
 
 YoloBox + Pi + mise 기반 agent workspace를 새 프로젝트에 생성하거나 기존 workspace를 갱신·검증·설정한다.
 
-## 커맨드
+## 기본 진입점
 
-| 커맨드 | 설명 |
+사용자가 목적을 명확히 지정하지 않았거나 어떤 서브커맨드를 써야 할지 애매하면 `/pi-workspace`를 스마트 모드로 실행한다.
+
+스마트 모드는 현재 프로젝트 상태를 진단하고, 필요한 서브커맨드와 실행 계획을 제안한 뒤 사용자 확인을 받아 진행한다.
+서브커맨드는 사용자가 외워야 하는 메뉴가 아니라 에이전트와 자동화가 호출하는 명시적 primitive다.
+
+| 커맨드 | 역할 |
 |--------|------|
-| `/pi-workspace:scaffold` | 새 프로젝트에 workspace 생성 |
-| `/pi-workspace:subagents` | 인증된 프로바이더 기반 서브에이전트 구성 |
-| `/pi-workspace:extensions` | pi 확장 패키지 카탈로그 조회·선택 설치 |
-| `/pi-workspace:prompts` | 에이전트 지침 프롬프트 관리·합성 |
-| `/pi-workspace:verify` | workspace 무결성 검증 |
-| `/pi-workspace:update` | managedFiles 갱신 |
-| `/pi-workspace:doctor` | 환경 상태만 확인 |
-| `/pi-workspace:report` | 이슈를 GitHub에 리포팅 |
+| `/pi-workspace` | 스마트 모드: 진단 → 상태 판단 → 계획 제안 → 승인 후 실행 |
+| `/pi-workspace:doctor` | 실행 환경 점검 primitive |
+| `/pi-workspace:verify` | 생성된 workspace 무결성 검증 primitive |
+| `/pi-workspace:scaffold` | 새 workspace 생성 primitive |
+| `/pi-workspace:update` | managedFiles 갱신 primitive |
+| `/pi-workspace:subagents` | 인증된 프로바이더 기반 서브에이전트 구성 primitive |
+| `/pi-workspace:extensions` | pi 확장 패키지 카탈로그 조회·선택 설치 primitive |
+| `/pi-workspace:prompts` | 에이전트 지침 프롬프트 관리·합성 primitive |
+| `/pi-workspace:report` | 이슈 리포트 primitive |
 
 ## 설치 확인
 
@@ -33,19 +39,42 @@ npx skills add siren403/pi-workspace --full-depth
 감지 기준: 사용자가 `/pi-workspace:scaffold` 등을 호출했는데 스킬을 찾을 수 없다는 응답이 오거나,
 현재 스킬 목록에 `pi-workspace-scaffold` 가 없는 경우.
 
-## 기본 동작 `/pi-workspace`
+## 스마트 모드 `/pi-workspace`
 
-서브커맨드 없이 호출되면 doctor를 실행하고 현재 상태에 따라 다음 단계를 제안한다.
+서브커맨드 없이 호출되면 다음 순서로 판단한다.
 
 ```bash
-cd .pi/skills/pi-workspace && mise run doctor -- --target <target>
+cd .pi/skills/pi-workspace
+mise trust
+mise run doctor -- --target <target>
 ```
 
-상태별 제안:
-- `.agent-workspace.json` 없음 → `/pi-workspace:scaffold` 안내
-- workspace 있음 + agentOverrides 없음 + pi-subagents 설치됨 → `/pi-workspace:subagents` 안내
-- workspace 있음 + 설정 완료 → 현재 구성 요약 출력
-- doctor ERROR → 오류 항목과 수정 방법 안내 후 종료
+1. **설치 상태 확인**
+   - `/pi-workspace:scaffold` 같은 서브커맨드가 없으면 `npx skills add siren403/pi-workspace --full-depth` 재설치 제안
+
+2. **doctor 실행**
+   - ERROR → 오류 항목과 수정 방법 안내 후 중단
+   - WARN → 계속할지 사용자 확인
+
+3. **workspace 상태 판단**
+   - `.agent-workspace.json` 없음 → scaffold 계획 제안
+   - workspace 있음 → verify 실행 제안
+   - managed files 누락/불일치 의심 → update 후 verify 계획 제안
+   - agentOverrides 없음 + pi-subagents 설치됨 → subagents 계획 제안
+   - AGENTS.md 프롬프트 섹션 없음 또는 갱신 필요 → prompts suggest/compose 계획 제안
+
+4. **사용자 의도 라우팅**
+   - "처음 세팅", "새 프로젝트" → scaffold
+   - "상태 확인", "문제 없는지" → doctor 후 필요하면 verify
+   - "업데이트", "버전업", "재설치 후 확인" → doctor → verify, 필요하면 update
+   - "서브에이전트", "모델" → subagents
+   - "확장", "패키지" → extensions
+   - "프롬프트", "AGENTS" → prompts
+   - "버그", "리포트", "이슈" → report
+
+5. **계획 제안 후 실행**
+   - 파일 생성·갱신·설치 작업은 사용자 승인 후 진행
+   - 승인 전에는 실행 계획과 영향을 받는 파일/설정을 먼저 설명
 
 ## 실행 규칙
 
