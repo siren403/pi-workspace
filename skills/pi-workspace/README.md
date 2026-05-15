@@ -83,10 +83,10 @@ Start here unless you already know the exact primitive command.
 
 Smart mode:
 
-1. Runs `mise run status -- --target <path> --intent "<user request>"`.
-2. Checks skill reinstall/update needs, workspace state, managed file drift, pi packages, sub-agent config, prompt sections, and gitignore coverage.
-3. Summarizes the suggested plan.
-4. Runs doctor/verify/update/scaffold or another primitive only after confirmation when files or settings will change.
+1. The agent trusts the installed skill path when needed.
+2. The agent runs the internal status task to inspect skill reinstall/update needs, workspace state, managed file drift, pi packages, sub-agent config, prompt sections, and gitignore coverage.
+3. The agent summarizes the suggested plan.
+4. The agent runs doctor/verify/update/scaffold or another primitive only after confirmation when files or settings will change.
 
 Typical routing:
 
@@ -256,13 +256,13 @@ The agent infers intent and routes to the appropriate flow:
 
 ---
 
-## Running tasks directly
+## Debugging Internal Tasks
 
-All agent commands map to mise tasks in the skill directory:
+Users normally call `/pi-workspace`; the agent calls these mise tasks internally. Run them directly only for debugging or skill development.
 
 ```bash
 cd .pi/skills/pi-workspace   # or wherever the skill is installed
-mise trust                    # required the first time in a new install path
+mise trust --yes              # required per install path
 
 mise run doctor    -- --target <path>
 mise run status    -- --target <path> [--intent "update this workspace"]

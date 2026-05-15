@@ -41,15 +41,15 @@ npx skills add siren403/pi-workspace --full-depth
 
 ## 스마트 모드 `/pi-workspace`
 
-서브커맨드 없이 호출되면 먼저 상태 수집 task를 실행한다. 이 task는 파일을 변경하지 않고 스킬 설치 상태, target workspace 상태, 다음 실행 계획을 출력한다.
+서브커맨드 없이 호출되면 스마트 모드로 동작한다. 사용자는 내부 mise 태스크를 직접 실행하지 않는다. 에이전트가 내부적으로 설치 경로를 trust하고 상태 수집 task를 실행한다.
 
 ```bash
 cd .pi/skills/pi-workspace
-mise trust
+mise trust --yes
 mise run status -- --target <target> --intent "<사용자 요청 원문>"
 ```
 
-그 다음 status 출력의 Suggested plan을 사용자에게 요약하고, 파일 생성·갱신·설치 작업은 승인 후 실행한다.
+`status` task는 파일을 변경하지 않고 스킬 설치 상태, target workspace 상태, 다음 실행 계획을 출력한다. 에이전트는 Suggested plan을 사용자에게 요약하고, 파일 생성·갱신·설치 작업은 승인 후 실행한다.
 
 판단 기준:
 
@@ -87,10 +87,10 @@ mise run status -- --target <target> --intent "<사용자 요청 원문>"
 
 모든 파일 생성·갱신은 이 스킬의 mise 태스크가 수행한다.
 
-스킬 디렉토리에서 실행:
+내부 구현 명령:
 ```bash
 cd .pi/skills/pi-workspace
-mise trust
+mise trust --yes
 
 mise run doctor    -- --target <path>
 mise run status    -- --target <path> --intent "<사용자 요청 원문>"

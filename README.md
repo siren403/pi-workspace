@@ -36,7 +36,7 @@ mise run dogfood
 mise run dogfood:unlink
 ```
 
-Run skill tasks through the nested package:
+Run skill helper tasks through the nested package during development:
 
 ```bash
 mise run skill:doctor -- --target .
@@ -45,11 +45,11 @@ mise run skill:verify -- --target <scaffolded-project>
 mise run skill:install-check
 ```
 
-Direct skill task execution requires trusting the nested mise config:
+Direct skill task execution is for debugging and requires trusting the nested mise config:
 
 ```bash
 cd skills/pi-workspace
-mise trust
+mise trust --yes
 mise run prompts -- --list
 ```
 
