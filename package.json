@@ -6,7 +6,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/siren403/pi-workspace.git"
+    "url": "git+https://github.com/siren403/pi-workspace.git"
   },
   "files": ["skills/pi-workspace"],
   "pi": {
