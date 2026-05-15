@@ -11,7 +11,8 @@ const { values } = parseArgs({
   options: {
     target: { type: "string", default: "." },
     intent: { type: "string", default: "" },
+    json: { type: "boolean", default: false },
   },
 });
 
-await runStatus(values.target!, values.intent ?? "");
+await runStatus(values.target!, values.intent ?? "", values.json ?? false);

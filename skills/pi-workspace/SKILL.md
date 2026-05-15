@@ -49,7 +49,14 @@ mise trust --yes
 mise run status -- --target <target> --intent "<사용자 요청 원문>"
 ```
 
-`status` task는 파일을 변경하지 않고 스킬 설치 상태, target workspace 상태, 다음 실행 계획을 출력한다. 에이전트는 Suggested plan을 사용자에게 요약하고, 파일 생성·갱신·설치 작업은 승인 후 실행한다.
+`status` task는 파일을 변경하지 않고 스킬 설치 상태, target workspace 상태, 다음 실행 계획을 출력한다. 에이전트는 `Recommended workflow`만 필요한 작업으로 요약하고, `Optional follow-ups`는 선택 항목으로 분리한다.
+
+사용자가 승인하면 에이전트는 `Recommended workflow`를 순서대로 끝까지 진행해 작업 가능한 상태를 만든다. 각 primitive를 다시 메뉴처럼 하나씩 승인받지 않는다. 단, destructive change, managed file overwrite, 외부 설치, 인증 변경처럼 파일/설정에 영향을 주는 실제 변경은 승인 범위 안에서만 수행한다.
+
+`/pi-workspace:update`가 필요한 경우:
+- 먼저 managed-file diff를 보여준다.
+- 사용자가 “해당 managed update 진행”을 승인하면 같은 승인 흐름 안에서 `--force` 갱신 후 verify까지 진행한다.
+- diff가 예상과 다르거나 managed files 밖의 변경이 필요하면 중단하고 다시 확인한다.
 
 판단 기준:
 
@@ -78,7 +85,8 @@ mise run status -- --target <target> --intent "<사용자 요청 원문>"
    - "버그", "리포트", "이슈" → report
 
 5. **계획 제안 후 실행**
-   - 파일 생성·갱신·설치 작업은 사용자 승인 후 진행
+   - `Recommended workflow`는 한 번 승인받고 끝까지 진행
+   - `Optional follow-ups`는 사용자가 요청하거나 승인할 때만 진행
    - 승인 전에는 실행 계획과 영향을 받는 파일/설정을 먼저 설명
 
 ## 실행 규칙

@@ -85,8 +85,9 @@ Smart mode:
 
 1. The agent trusts the installed skill path when needed.
 2. The agent runs the internal status task to inspect skill reinstall/update needs, workspace state, managed file drift, pi packages, sub-agent config, prompt sections, and gitignore coverage.
-3. The agent summarizes the suggested plan.
-4. The agent runs doctor/verify/update/scaffold or another primitive only after confirmation when files or settings will change.
+3. The agent summarizes only the `Recommended workflow` as the required work and keeps `Optional follow-ups` separate.
+4. After one approval, the agent runs the recommended workflow end-to-end until the workspace is usable or a real blocker appears.
+5. For managed-file drift, the agent shows the diff first; if approved, it applies the managed refresh and verifies in the same workflow.
 
 Typical routing:
 

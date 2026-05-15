@@ -45,6 +45,15 @@ mise run skill:verify -- --target <scaffolded-project>
 mise run skill:install-check
 ```
 
+Run e2e checks:
+
+```bash
+mise run e2e:smart
+PI_WORKSPACE_E2E_AGENT=1 mise run e2e:agent -- --agent pi
+```
+
+`e2e:smart` is deterministic and uses temp fixtures. `e2e:agent` is opt-in because it calls a real agent/model provider and writes transcripts under `.e2e/transcripts`.
+
 Direct skill task execution is for debugging and requires trusting the nested mise config:
 
 ```bash

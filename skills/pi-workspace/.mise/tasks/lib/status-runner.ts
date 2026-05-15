@@ -2,7 +2,35 @@ import { readdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { readManifest } from "./manifest.ts";
 
-type PlanItem = { action: string; reason: string };
+export type PlanItem = { action: string; reason: string };
+
+export interface StatusReport {
+  skill: {
+    version: string;
+    subskills: string[];
+    reinstallCommand: string;
+  };
+  target: {
+    path: string;
+    manifest: null | {
+      version: string;
+      profile: string;
+      managedFiles: number;
+    };
+    drift: {
+      missing: string[];
+      outOfSync: string[];
+    };
+    packages: string[];
+    missingPackages: string[];
+    agentOverrides: string[];
+    promptSections: string[];
+    missingGitignore: string[];
+  };
+  recommendedWorkflow: PlanItem[];
+  optionalFollowups: PlanItem[];
+  notNeeded: string[];
+}
 
 const SKILL_DIR = resolve(import.meta.dir, "../../..");
 const TEMPLATE_DIR = join(SKILL_DIR, "templates", "scaffold");
@@ -82,7 +110,10 @@ async function inspectTarget(target: string) {
   );
   const packages = settings?.packages ?? [];
   const missingPackages = REQUIRED_PACKAGES.filter((pkg) => !packages.includes(pkg));
-  const agentOverrides = settings?.agentOverrides ?? settings?.subagents?.agentOverrides ?? {};
+  const agentOverrides = {
+    ...(settings?.subagents?.agentOverrides ?? {}),
+    ...(settings?.agentOverrides ?? {}),
+  };
   const promptText = await exists(resolve(absTarget, "AGENTS.md"))
     ? await Bun.file(resolve(absTarget, "AGENTS.md")).text()
     : "";
@@ -117,14 +148,12 @@ function buildPlan(intent: string, target: Awaited<ReturnType<typeof inspectTarg
   const plan: PlanItem[] = [];
   const wantsUpdate = intentIncludes(intent, ["update", "reinstall", "version", "latest", "업데이트", "재설치", "버전", "최신"]);
   const wantsSetup = intentIncludes(intent, ["setup", "scaffold", "init", "처음", "세팅", "생성", "초기"]);
-  const wantsPrompt = intentIncludes(intent, ["prompt", "agents", "프롬프트", "지침"]);
   const wantsSubagents = intentIncludes(intent, ["subagent", "model", "서브에이전트", "모델"]);
-  const wantsReport = intentIncludes(intent, ["bug", "issue", "report", "버그", "이슈", "리포트"]);
 
   if (wantsUpdate) {
     plan.push({
       action: REINSTALL_COMMAND,
-      reason: "project-scope skills.sh installs are refreshed by rerunning add; this overwrites the installed copy",
+      reason: "refresh the installed skill before validating workspace state",
     });
   }
 
@@ -145,19 +174,19 @@ function buildPlan(intent: string, target: Awaited<ReturnType<typeof inspectTarg
     return plan;
   }
 
-  plan.push({
-    action: "/pi-workspace:verify",
-    reason: "workspace manifest exists, so check generated files and pi package registration",
-  });
-
   if (target.drift.missing.length > 0 || target.drift.outOfSync.length > 0 || target.missingGitignore.length > 0) {
     plan.push({
       action: "/pi-workspace:update",
-      reason: "review managed file/template drift, then apply refresh after user approval",
+      reason: "managed file/template drift detected; show diff, then apply approved managed refresh",
     });
     plan.push({
       action: "/pi-workspace:verify",
       reason: "confirm workspace after update",
+    });
+  } else {
+    plan.push({
+      action: "/pi-workspace:verify",
+      reason: "workspace manifest exists and no managed drift was detected",
     });
   }
 
@@ -168,52 +197,147 @@ function buildPlan(intent: string, target: Awaited<ReturnType<typeof inspectTarg
     });
   }
 
+  return plan;
+}
+
+function buildOptionalFollowups(intent: string, target: Awaited<ReturnType<typeof inspectTarget>>): PlanItem[] {
+  const followups: PlanItem[] = [];
+  const wantsPrompt = intentIncludes(intent, ["prompt", "agents", "프롬프트", "지침"]);
+  const wantsReport = intentIncludes(intent, ["bug", "issue", "report", "버그", "이슈", "리포트"]);
+
   if (wantsPrompt || target.promptSections.length === 0) {
-    plan.push({
+    followups.push({
       action: "/pi-workspace:prompts suggest",
-      reason: wantsPrompt ? "requested prompt/AGENTS.md work" : "no pi-prompts sections found in AGENTS.md",
+      reason: wantsPrompt ? "requested prompt/AGENTS.md work" : "optional: no pi-prompts sections found in AGENTS.md",
     });
   }
 
   if (wantsReport) {
-    plan.push({
+    followups.push({
       action: "/pi-workspace:report",
       reason: "requested issue reporting",
     });
   }
 
-  return plan;
+  return followups;
 }
 
-export async function runStatus(targetArg: string, intent = ""): Promise<void> {
-  const skill = await inspectSkill();
-  const target = await inspectTarget(targetArg);
-  const plan = buildPlan(intent, target);
+function buildSkipped(target: Awaited<ReturnType<typeof inspectTarget>>): string[] {
+  const skipped: string[] = [];
+  if (target.manifest) skipped.push("scaffold: workspace manifest already exists");
+  if (target.agentOverrideNames.length > 0) skipped.push(`subagents: configured (${target.agentOverrideNames.join(", ")})`);
+  if (target.missingPackages.length === 0) skipped.push("extensions: required package npm:pi-subagents is already registered");
+  return skipped;
+}
 
-  console.log("\n[status] Skill install\n");
-  console.log(`  version: ${skill.version}`);
-  console.log(`  subskill definitions in package: ${skill.subskills.length ? skill.subskills.join(", ") : "none"}`);
-  console.log(`  reinstall/update command: ${REINSTALL_COMMAND}`);
-  console.log("  note: if direct /pi-workspace:* commands are unavailable, reinstall with --full-depth");
-
-  console.log("\n[status] Target workspace\n");
-  console.log(`  target: ${target.absTarget}`);
-  console.log(`  manifest: ${target.manifest ? `${target.manifest.version} (${target.manifest.profile})` : "missing"}`);
-  if (target.manifest) {
-    console.log(`  managed files: ${target.manifest.managedFiles.length}`);
-    console.log(`  missing managed files: ${target.drift.missing.length ? target.drift.missing.join(", ") : "none"}`);
-    console.log(`  out-of-sync managed files: ${target.drift.outOfSync.length ? target.drift.outOfSync.join(", ") : "none"}`);
+function printPlan(title: string, items: PlanItem[]): void {
+  console.log(`\n[status] ${title}\n`);
+  if (items.length === 0) {
+    console.log("  none");
+    return;
   }
-  console.log(`  pi packages: ${target.packages.length ? target.packages.join(", ") : "none"}`);
-  console.log(`  missing required packages: ${target.missingPackages.length ? target.missingPackages.join(", ") : "none"}`);
-  console.log(`  agentOverrides: ${target.agentOverrideNames.length ? target.agentOverrideNames.join(", ") : "none"}`);
-  console.log(`  pi-prompts sections: ${target.promptSections.length ? target.promptSections.join(", ") : "none"}`);
-  console.log(`  missing gitignore patterns: ${target.missingGitignore.length ? target.missingGitignore.join(", ") : "none"}`);
-
-  console.log("\n[status] Suggested plan\n");
-  plan.forEach((item, index) => {
+  items.forEach((item, index) => {
     console.log(`  ${index + 1}. ${item.action}`);
     console.log(`     reason: ${item.reason}`);
   });
-  console.log("\n  Review this plan with the user before running file-changing commands.\n");
+}
+
+function printOptional(title: string, items: PlanItem[]): void {
+  console.log(`\n[status] ${title}\n`);
+  if (items.length === 0) {
+    console.log("  none");
+    return;
+  }
+  items.forEach((item) => {
+    console.log(`  - ${item.action}`);
+    console.log(`    reason: ${item.reason}`);
+  });
+}
+
+function printSkipped(skipped: string[]): void {
+  console.log("\n[status] Not needed now\n");
+  if (skipped.length === 0) {
+    console.log("  none");
+    return;
+  }
+  for (const item of skipped) console.log(`  - ${item}`);
+}
+
+function printApprovalGuidance(plan: PlanItem[]): void {
+  console.log("\n[status] Approval guidance\n");
+  if (plan.length === 0) {
+    console.log("  No required workflow is needed.");
+    return;
+  }
+  console.log("  Ask for one approval to run the recommended workflow end-to-end.");
+  console.log("  After approval, execute the steps in order and continue until the workspace is usable or a real blocker appears.");
+  console.log("  If /pi-workspace:update is needed, show the managed-file diff first, then apply the managed refresh only after that approval.");
+}
+
+export async function buildStatusReport(targetArg: string, intent = ""): Promise<StatusReport> {
+  const skill = await inspectSkill();
+  const target = await inspectTarget(targetArg);
+  return {
+    skill: {
+      version: skill.version,
+      subskills: skill.subskills,
+      reinstallCommand: REINSTALL_COMMAND,
+    },
+    target: {
+      path: target.absTarget,
+      manifest: target.manifest
+        ? {
+            version: target.manifest.version,
+            profile: target.manifest.profile,
+            managedFiles: target.manifest.managedFiles.length,
+          }
+        : null,
+      drift: target.drift,
+      packages: target.packages,
+      missingPackages: target.missingPackages,
+      agentOverrides: target.agentOverrideNames,
+      promptSections: target.promptSections,
+      missingGitignore: target.missingGitignore,
+    },
+    recommendedWorkflow: buildPlan(intent, target),
+    optionalFollowups: buildOptionalFollowups(intent, target),
+    notNeeded: buildSkipped(target),
+  };
+}
+
+export function printStatusReport(report: StatusReport): void {
+  console.log("\n[status] Skill install\n");
+  console.log(`  version: ${report.skill.version}`);
+  console.log(`  subskill definitions in package: ${report.skill.subskills.length ? report.skill.subskills.join(", ") : "none"}`);
+  console.log(`  reinstall/update command: ${report.skill.reinstallCommand}`);
+  console.log("  note: if direct /pi-workspace:* commands are unavailable, reinstall with --full-depth");
+
+  console.log("\n[status] Target workspace\n");
+  console.log(`  target: ${report.target.path}`);
+  console.log(`  manifest: ${report.target.manifest ? `${report.target.manifest.version} (${report.target.manifest.profile})` : "missing"}`);
+  if (report.target.manifest) {
+    console.log(`  managed files: ${report.target.manifest.managedFiles}`);
+    console.log(`  missing managed files: ${report.target.drift.missing.length ? report.target.drift.missing.join(", ") : "none"}`);
+    console.log(`  out-of-sync managed files: ${report.target.drift.outOfSync.length ? report.target.drift.outOfSync.join(", ") : "none"}`);
+  }
+  console.log(`  pi packages: ${report.target.packages.length ? report.target.packages.join(", ") : "none"}`);
+  console.log(`  missing required packages: ${report.target.missingPackages.length ? report.target.missingPackages.join(", ") : "none"}`);
+  console.log(`  agentOverrides: ${report.target.agentOverrides.length ? report.target.agentOverrides.join(", ") : "none"}`);
+  console.log(`  pi-prompts sections: ${report.target.promptSections.length ? report.target.promptSections.join(", ") : "none"}`);
+  console.log(`  missing gitignore patterns: ${report.target.missingGitignore.length ? report.target.missingGitignore.join(", ") : "none"}`);
+
+  printPlan("Recommended workflow", report.recommendedWorkflow);
+  printApprovalGuidance(report.recommendedWorkflow);
+  printOptional("Optional follow-ups", report.optionalFollowups);
+  printSkipped(report.notNeeded);
+  console.log("");
+}
+
+export async function runStatus(targetArg: string, intent = "", json = false): Promise<void> {
+  const report = await buildStatusReport(targetArg, intent);
+  if (json) {
+    console.log(JSON.stringify(report, null, 2));
+    return;
+  }
+  printStatusReport(report);
 }

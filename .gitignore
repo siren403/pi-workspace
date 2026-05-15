@@ -3,3 +3,4 @@ node_modules/
 .pi/skills/pi-workspace
 .agents/skills/pi-workspace
 .claude/skills/pi-workspace
+.e2e/
