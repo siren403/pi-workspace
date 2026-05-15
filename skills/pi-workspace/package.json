@@ -7,9 +7,5 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/siren403/pi-workspace.git"
-  },
-  "files": ["skills/pi-workspace"],
-  "pi": {
-    "skills": ["./skills/pi-workspace"]
   }
 }

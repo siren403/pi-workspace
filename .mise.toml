@@ -1,2 +1,4 @@
 [tools]
 bun = "1.2"
+node = "24"
+"npm:@earendil-works/pi-coding-agent" = "0.74.0"

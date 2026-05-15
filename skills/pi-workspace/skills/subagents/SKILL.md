@@ -18,6 +18,7 @@ description: 인증된 프로바이더를 기반으로 pi 서브에이전트 역
 
 ```bash
 cd .pi/skills/pi-workspace   # 또는 .agents/skills/pi-workspace
+mise trust                   # 새 설치 경로에서는 최초 1회 필요
 ```
 
 ## 플로우

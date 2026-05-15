@@ -13,6 +13,7 @@ description: YoloBox + Pi + mise workspace를 새 프로젝트에 생성한다. 
 
 ```bash
 cd .pi/skills/pi-workspace   # 또는 .agents/skills/pi-workspace
+mise trust                   # 새 설치 경로에서는 최초 1회 필요
 ```
 
 ## 플로우

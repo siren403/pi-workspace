@@ -1,2 +1,5 @@
 node_modules/
 .mise/cache/
+.pi/skills/pi-workspace
+.agents/skills/pi-workspace
+.claude/skills/pi-workspace

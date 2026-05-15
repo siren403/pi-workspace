@@ -11,6 +11,7 @@ description: pi-workspace 환경 상태를 점검한다. mise, pi, YoloBox, pi �
 
 ```bash
 cd .pi/skills/pi-workspace   # 또는 .agents/skills/pi-workspace
+mise trust                   # 새 설치 경로에서는 최초 1회 필요
 mise run doctor -- --target <path>
 ```
 

@@ -13,6 +13,7 @@ pi-workspace 사용 중 버그나 문제를 GitHub 이슈로 리포팅한다.
 
 ```bash
 cd .agents/skills/pi-workspace   # 또는 .pi/skills/pi-workspace
+mise trust                       # 새 설치 경로에서는 최초 1회 필요
 ```
 
 ## 플로우

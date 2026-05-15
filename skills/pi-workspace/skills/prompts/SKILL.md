@@ -13,6 +13,7 @@ AGENTS.md에 에이전트 행동 지침 프롬프트를 관리한다.
 
 ```bash
 cd .pi/skills/pi-workspace   # 또는 .agents/skills/pi-workspace
+mise trust                   # 새 설치 경로에서는 최초 1회 필요
 ```
 
 ## 호출 패턴
