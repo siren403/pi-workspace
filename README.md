@@ -9,7 +9,7 @@ The installable skills.sh package lives in `skills/pi-workspace/`. The repositor
 Recommended:
 
 ```bash
-npx skills add siren403/pi-workspace/skills/pi-workspace --full-depth
+npx skills add siren403/pi-workspace --full-depth
 ```
 
 GitHub tree URL fallback:

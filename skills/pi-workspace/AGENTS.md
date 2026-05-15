@@ -11,8 +11,8 @@ This directory is the installable `pi-workspace` skill package. Keep it self-con
 
 ## Installation
 
-- The skills.sh install target is this directory:
-  `npx skills add siren403/pi-workspace/skills/pi-workspace --full-depth`
-- The GitHub tree URL fallback is:
+- The primary skills.sh install command is:
+  `npx skills add siren403/pi-workspace --full-depth`
+- The explicit GitHub tree URL fallback is:
   `npx skills add https://github.com/siren403/pi-workspace/tree/main/skills/pi-workspace --full-depth`
 - `--full-depth` is required when users need the subcommands exposed as separate skills.

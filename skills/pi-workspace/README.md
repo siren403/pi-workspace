@@ -10,13 +10,13 @@ Works with **pi**, **Claude Code**, **Codex**, and 55+ agents via [skills.sh](ht
 
 > **Claude Code / Codex / Cursor 등에게:**
 >
-> `https://github.com/siren403/pi-workspace/tree/main/skills/pi-workspace` 스킬을 full-depth로 설치해줘.
+> `siren403/pi-workspace` 스킬을 full-depth로 설치해줘.
 
 에이전트가 실행할 명령:
 
 ```bash
 mkdir -p .claude
-npx skills add siren403/pi-workspace/skills/pi-workspace --full-depth
+npx skills add siren403/pi-workspace --full-depth
 ```
 
 ---
@@ -25,13 +25,13 @@ npx skills add siren403/pi-workspace/skills/pi-workspace --full-depth
 
 ```bash
 # 전체 서브커맨드를 개별 항목으로 설치 (권장)
-npx skills add siren403/pi-workspace/skills/pi-workspace --full-depth
+npx skills add siren403/pi-workspace --full-depth
 
 # GitHub tree URL fallback
 npx skills add https://github.com/siren403/pi-workspace/tree/main/skills/pi-workspace --full-depth
 
 # 메인 스킬만 설치
-npx skills add siren403/pi-workspace/skills/pi-workspace
+npx skills add siren403/pi-workspace
 
 # via pi
 pi install npm:pi-workspace -l
@@ -43,7 +43,7 @@ pi install npm:pi-workspace -l
 > 설치 전 디렉토리가 없다면 먼저 만들어 주세요.
 > ```bash
 > mkdir -p .claude
-> npx skills add siren403/pi-workspace/skills/pi-workspace --full-depth
+> npx skills add siren403/pi-workspace --full-depth
 > ```
 
 ## Commands
