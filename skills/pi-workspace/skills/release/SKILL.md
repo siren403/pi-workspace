@@ -1,6 +1,6 @@
 ---
 name: pi-workspace-release
-description: pi-workspace skill package 릴리즈를 준비하고 검증한다. pi 버전 업데이트, skills.sh 배포, npm publish, e2e 검증, commit/tag/push 전 일관된 release checklist가 필요할 때 사용한다.
+description: pi-workspace skill package 릴리즈를 준비하고 검증한다. pi 버전 업데이트, GitHub 기반 skills.sh 배포, e2e 검증, commit/push 전 일관된 release checklist가 필요할 때 사용한다.
 ---
 
 # Pi Workspace — Release
@@ -16,8 +16,15 @@ pi-workspace skill package의 릴리즈를 준비한다. 변경은 작게 묶고
 | dependency | `pi` 최신 버전 반영 | pin 위치 갱신 + e2e |
 | skill behavior | SKILL.md, status, task 로직 변경 | e2e + install-check |
 | template | scaffold 템플릿 변경 | drift/update e2e |
-| npm package | npm 배포 필요 | package version bump + dry-run |
-| docs only | README/SKILL 문서 | discovery + dry-run |
+| release process | 배포/검증 지침 변경 | install-check + remote discovery |
+| docs only | README/SKILL 문서 | discovery + diff check |
+
+## Distribution Policy
+
+- 배포 채널은 GitHub repository `siren403/pi-workspace`의 `main` 브랜치다.
+- 사용자는 `npx skills add siren403/pi-workspace --full-depth`로 설치/갱신한다.
+- npm은 `npx skills` 실행 수단일 뿐, `pi-workspace` 배포 채널로 사용하지 않는다.
+- registry 배포, registry dry-run, package version bump를 릴리즈 절차에 포함하지 않는다.
 
 ## Version Policy
 
@@ -52,15 +59,14 @@ pi-workspace skill package의 릴리즈를 준비한다. 변경은 작게 묶고
    - `skills/pi-workspace/SKILL.md`
    - `skills/pi-workspace/README.md`
    - `skills/pi-workspace/skills/*/SKILL.md`
-   - root `package.json` only when npm publish version changes
 
 4. 검증 실행
    ```bash
    mise run e2e:smart
+   mise run e2e:cold-start
    mise run skill:install-check
    npx skills add ./skills/pi-workspace --list --full-depth
    env PATH="$HOME/.local/bin:/usr/bin:/bin" MISE_DATA_DIR=/tmp/pi-workspace-mise-empty MISE_AUTO_INSTALL=0 mise run status -- --target /tmp
-   npm publish --dry-run
    git diff --check
    ```
 
@@ -72,11 +78,11 @@ pi-workspace skill package의 릴리즈를 준비한다. 변경은 작게 묶고
    ```
    provider/auth/quota 문제는 transcript로 기록하고, `PI_WORKSPACE_E2E_STRICT=1`이 아니면 release blocker로 보지 않는다.
 
-6. npm 배포 여부 결정
-   - GitHub skills.sh 배포만 필요하면 commit + push
-   - npm 배포가 필요하면 root `package.json` version bump 후 `npm publish --dry-run`, 승인 후 `npm publish`
+6. 배포
+   - 검증 통과 후 commit + push로 GitHub `main`에 반영한다.
+   - 별도 요청이 없으면 tag나 registry 배포를 만들지 않는다.
 
-7. 원격 검증
+7. 원격 skills.sh 검증
    ```bash
    npx skills add siren403/pi-workspace --list --full-depth
    ```
@@ -89,10 +95,10 @@ pi-workspace skill package의 릴리즈를 준비한다. 변경은 작게 묶고
 
 ## Stop Conditions
 
-- `e2e:smart`, `skill:install-check`, `npm publish --dry-run`, `git diff --check` 실패
+- `e2e:smart`, `e2e:cold-start`, `skill:install-check`, `git diff --check` 실패
 - skills.sh full-depth discovery에서 예상 subskill 누락
 - managed template 변경이 있는데 drift/update e2e가 깨짐
-- npm publish가 필요한데 package version을 올리지 않음
+- release 작업이 registry 배포를 요구하는 방향으로 흐름
 - release 범위와 무관한 파일 변경 발견
 
 ## Output
