@@ -1,6 +1,7 @@
 import { readdir } from "node:fs/promises";
-import { join, relative, resolve } from "node:path";
+import { join, resolve } from "node:path";
 import { readManifest } from "./manifest.ts";
+import { listTemplateFiles, TEMPLATE_DIR } from "./templates.ts";
 
 export type PlanItem = { action: string; reason: string };
 
@@ -13,8 +14,9 @@ export interface StatusReport {
   target: {
     path: string;
     manifest: null | {
-      version: string;
+      manifestVersion: number;
       profile: string;
+      templateRevision: string;
       managedFiles: number;
     };
     drift: {
@@ -33,7 +35,6 @@ export interface StatusReport {
 }
 
 const SKILL_DIR = resolve(import.meta.dir, "../../..");
-const TEMPLATE_DIR = join(SKILL_DIR, "templates", "scaffold");
 const REINSTALL_COMMAND = "npx skills add siren403/pi-workspace --full-depth";
 const REQUIRED_PACKAGES = ["npm:pi-subagents"];
 const PI_GITIGNORE_PATTERNS = [".pi/npm/", ".pi/git/", ".pi/agent/", ".claude/settings.local.json"];
@@ -61,21 +62,6 @@ async function listSubskills(): Promise<string[]> {
       if (await exists(join(skillsDir, entry.name, "SKILL.md"))) names.push(entry.name);
     }
     return names.sort();
-  } catch {
-    return [];
-  }
-}
-
-async function listTemplateFiles(): Promise<string[]> {
-  try {
-    const entries = await readdir(TEMPLATE_DIR, { withFileTypes: true, recursive: true });
-    const paths: string[] = [];
-    for (const entry of entries) {
-      if (!entry.isFile()) continue;
-      const parent = entry.parentPath ?? TEMPLATE_DIR;
-      paths.push(relative(TEMPLATE_DIR, join(parent, entry.name)));
-    }
-    return paths.sort();
   } catch {
     return [];
   }
@@ -302,9 +288,10 @@ export async function buildStatusReport(targetArg: string, intent = ""): Promise
     target: {
       path: target.absTarget,
       manifest: target.manifest
-        ? {
-            version: target.manifest.version,
+          ? {
+            manifestVersion: target.manifest.manifestVersion,
             profile: target.manifest.profile,
+            templateRevision: target.manifest.template.revision,
             managedFiles: target.manifest.managedFiles.length,
           }
         : null,
@@ -330,8 +317,9 @@ export function printStatusReport(report: StatusReport): void {
 
   console.log("\n[status] Target workspace\n");
   console.log(`  target: ${report.target.path}`);
-  console.log(`  manifest: ${report.target.manifest ? `${report.target.manifest.version} (${report.target.manifest.profile})` : "missing"}`);
+  console.log(`  manifest: ${report.target.manifest ? `v${report.target.manifest.manifestVersion} (${report.target.manifest.profile})` : "missing"}`);
   if (report.target.manifest) {
+    console.log(`  template revision: ${report.target.manifest.templateRevision}`);
     console.log(`  managed files: ${report.target.manifest.managedFiles}`);
     console.log(`  missing managed files: ${report.target.drift.missing.length ? report.target.drift.missing.join(", ") : "none"}`);
     console.log(`  out-of-sync managed files: ${report.target.drift.outOfSync.length ? report.target.drift.outOfSync.join(", ") : "none"}`);

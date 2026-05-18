@@ -1,11 +1,11 @@
-import { resolve, relative, dirname, join } from "path";
-import { readdir, chmod, stat } from "fs/promises";
+import { resolve, join } from "path";
+import { chmod, stat } from "fs/promises";
 import { $ } from "bun";
 import { writeFile, diffFile } from "./fs.ts";
 import { writeManifest, defaultManifest, type Manifest } from "./manifest.ts";
 import { injectGitignore } from "./gitignore.ts";
+import { getTemplateFiles, templateRevision } from "./templates.ts";
 
-const TEMPLATES_DIR = resolve(import.meta.dir, "../../../templates/scaffold");
 const EXECUTABLE_TASKS = ["pi", "pi:fork", "pi:shell", "pi:version"];
 
 const AGENT_FILES: Record<string, { path: string; content: string }> = {
@@ -33,18 +33,6 @@ interface FileAction {
   result: "created" | "skipped" | "conflict" | "updated" | "would-create" | "would-update";
 }
 
-async function walkDir(dir: string): Promise<string[]> {
-  const paths: string[] = [];
-  const entries = await readdir(dir, { withFileTypes: true, recursive: true });
-  for (const e of entries) {
-    if (e.isFile()) {
-      const full = join(e.parentPath ?? dirname(join(dir, e.name)), e.name);
-      paths.push(full);
-    }
-  }
-  return paths;
-}
-
 export async function runScaffold(opts: ScaffoldOptions): Promise<void> {
   const target = resolve(opts.target);
   const actions: FileAction[] = [];
@@ -52,10 +40,9 @@ export async function runScaffold(opts: ScaffoldOptions): Promise<void> {
   console.log(`\n[scaffold] target: ${target}\n`);
 
   // 1. 템플릿 파일 복사
-  const templateFiles = await walkDir(TEMPLATES_DIR);
+  const templateFiles = await getTemplateFiles();
 
-  for (const srcPath of templateFiles) {
-    const relPath = relative(TEMPLATES_DIR, srcPath);
+  for (const [relPath, srcPath] of templateFiles) {
     const destPath = resolve(target, relPath);
     const content = await Bun.file(srcPath).text();
 
@@ -115,15 +102,13 @@ export async function runScaffold(opts: ScaffoldOptions): Promise<void> {
   console.log(`  ${giResult === "injected" ? "✓" : "·"} .gitignore pi patterns ${giResult}`);
 
   // 5. manifest 생성
-  const managedFiles = templateFiles.map((f) => relative(TEMPLATES_DIR, f));
+  const managedFiles = [...templateFiles.keys()];
   managedFiles.push(...agents.map((a) => AGENT_FILES[a].path));
-  managedFiles.push(".agent-workspace.json");
 
-  const manifest: Manifest = {
-    ...defaultManifest(),
-    scaffoldedAt: new Date().toISOString(),
+  const manifest: Manifest = defaultManifest({
     managedFiles,
-  };
+    templateRevision: await templateRevision(),
+  });
   await writeManifest(target, manifest);
   console.log("  ✓ .agent-workspace.json");
 

@@ -2,7 +2,7 @@ import { assert, assertEqual, assertIncludes, assertNotIncludes } from "../lib/a
 
 interface StatusReport {
   target: {
-    manifest: null | { version: string; profile: string; managedFiles: number };
+    manifest: null | { manifestVersion: number; profile: string; templateRevision: string; managedFiles: number };
     drift: { missing: string[]; outOfSync: string[] };
     missingPackages: string[];
     agentOverrides: string[];

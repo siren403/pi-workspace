@@ -1,24 +1,10 @@
-import { resolve, relative, join } from "path";
-import { readdir } from "fs/promises";
-import { readManifest, writeManifest, MANIFEST_FILE } from "./manifest.ts";
+import { resolve } from "path";
+import { readManifest, writeManifest, normalizeManifest, MANIFEST_FILE } from "./manifest.ts";
 import { writeFile, diffFile } from "./fs.ts";
-
-const TEMPLATES_DIR = resolve(import.meta.dir, "../../../templates/scaffold");
+import { getTemplateFiles, templateRevision } from "./templates.ts";
 
 // 코드 생성 파일 (템플릿 없음 → 업데이트 대상 제외)
 const CODE_GENERATED = [MANIFEST_FILE];
-
-async function getTemplateFiles(): Promise<Map<string, string>> {
-  const map = new Map<string, string>();
-  const entries = await readdir(TEMPLATES_DIR, { withFileTypes: true, recursive: true });
-  for (const e of entries) {
-    if (!e.isFile()) continue;
-    const full = join(e.parentPath ?? TEMPLATES_DIR, e.name);
-    const rel  = relative(TEMPLATES_DIR, full);
-    map.set(rel, full);
-  }
-  return map;
-}
 
 export async function runUpdate(opts: { target: string; force: boolean; diff: boolean }): Promise<void> {
   const target = resolve(opts.target);
@@ -65,11 +51,14 @@ export async function runUpdate(opts: { target: string; force: boolean; diff: bo
 
   if (!opts.diff) {
     if (conflict === 0) {
-      const managedFiles = [...new Set([...manifest.managedFiles, ...templates.keys()])].sort();
-      const changed = managedFiles.join("\n") !== [...manifest.managedFiles].sort().join("\n");
+      const nextManifest = normalizeManifest(manifest, {
+        activeManagedFiles: [...templates.keys()],
+        templateRevision: await templateRevision(),
+      });
+      const changed = JSON.stringify(nextManifest) !== JSON.stringify(manifest);
       if (changed) {
-        await writeManifest(target, { ...manifest, managedFiles });
-        console.log("  ✓ .agent-workspace.json  (managedFiles updated)");
+        await writeManifest(target, nextManifest);
+        console.log("  ✓ .agent-workspace.json  (manifest normalized)");
         updated++;
       }
     }

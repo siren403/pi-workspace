@@ -34,6 +34,17 @@ export async function runSmartWorkflowScenario(): Promise<void> {
 
   await withFixture(staleManifestFixture(), async ({ target }) => {
     assertStaleManifestWorkspace(await status(target, "작업 가능한 상태로 만들어줘"));
+    await $`mise run update -- --target ${target} --force`.cwd(SKILL_DIR).quiet();
+    const manifest = await Bun.file(`${target}/.agent-workspace.json`).json() as {
+      manifestVersion?: number;
+      template?: { revision?: string };
+      managedFiles?: string[];
+    };
+    if (manifest.manifestVersion !== 1) throw new Error("stale manifest update: manifestVersion was not normalized");
+    if (!manifest.template?.revision?.startsWith("sha256:")) throw new Error("stale manifest update: template revision missing");
+    if (!manifest.managedFiles?.includes(".mise/tasks/pi:shell")) {
+      throw new Error("stale manifest update: managedFiles missing current template file");
+    }
   });
 
   await withFixture(missingPackageFixture(), async ({ target }) => {

@@ -1,8 +1,7 @@
-import { relative, resolve, join } from "path";
-import { access, constants, readdir } from "fs/promises";
+import { resolve, join } from "path";
+import { access, constants } from "fs/promises";
 import { readManifest, MANIFEST_FILE } from "./manifest.ts";
-
-const TEMPLATE_DIR = resolve(import.meta.dir, "../../../templates/scaffold");
+import { listTemplateFiles, TEMPLATE_DIR } from "./templates.ts";
 
 type Status = "ok" | "warn" | "error";
 interface Check { name: string; status: Status; message: string; fix?: string }
@@ -13,8 +12,22 @@ const REQUIRED_PACKAGES = ["npm:pi-subagents"];
 
 async function checkManifest(target: string): Promise<Check> {
   const path = resolve(target, MANIFEST_FILE);
-  if (await Bun.file(path).exists())
-    return { name: "manifest", status: "ok", message: ".agent-workspace.json exists" };
+  if (await Bun.file(path).exists()) {
+    const manifest = await readManifest(target);
+    if (manifest) {
+      return {
+        name: "manifest",
+        status: "ok",
+        message: `.agent-workspace.json exists (schema v${manifest.manifestVersion}, template ${manifest.template.revision})`,
+      };
+    }
+    return {
+      name: "manifest",
+      status: "error",
+      message: ".agent-workspace.json is invalid",
+      fix: "Run /pi-workspace:update if recoverable, or /pi-workspace:scaffold for a fresh manifest",
+    };
+  }
   return {
     name: "manifest", status: "error",
     message: ".agent-workspace.json not found",
@@ -56,17 +69,6 @@ async function checkManagedFiles(target: string): Promise<Check[]> {
     });
   }
   return checks;
-}
-
-async function listTemplateFiles(): Promise<string[]> {
-  const entries = await readdir(TEMPLATE_DIR, { withFileTypes: true, recursive: true });
-  const paths: string[] = [];
-  for (const entry of entries) {
-    if (!entry.isFile()) continue;
-    const parent = entry.parentPath ?? TEMPLATE_DIR;
-    paths.push(relative(TEMPLATE_DIR, resolve(parent, entry.name)));
-  }
-  return paths.sort();
 }
 
 async function checkForbiddenFiles(target: string): Promise<Check> {

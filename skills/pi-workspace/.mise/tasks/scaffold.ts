@@ -9,6 +9,7 @@ import { parseArgs } from "util";
 
 const { values } = parseArgs({
   args: Bun.argv.slice(2),
+  allowNegative: true,
   options: {
     target:  { type: "string",  default: "." },
     force:   { type: "boolean", default: false },

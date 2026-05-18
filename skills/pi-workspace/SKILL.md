@@ -63,6 +63,10 @@ mise run status -- --target <target> --intent "<사용자 요청 원문>"
 - 사용자가 “해당 managed update 진행”을 승인하면 같은 승인 흐름 안에서 `--force` 갱신 후 verify까지 진행한다.
 - diff가 예상과 다르거나 managed files 밖의 변경이 필요하면 중단하고 다시 확인한다.
 
+`.agent-workspace.json`은 target workspace에 마지막으로 적용된 상태 기록이다. 현재 관리 대상의 유일한 기준으로 사용하지 않는다.
+status/update/verify는 항상 현재 설치된 skill의 `templates/scaffold` 파일 목록과 `.agent-workspace.json`의 `managedFiles`를 함께 비교한다.
+update 성공 후 `.agent-workspace.json`은 `manifestVersion`, `template.revision`, `managedFiles`를 최신 기준으로 normalize한다.
+
 판단 기준:
 
 1. **스킬 설치/업데이트 상태 확인**
