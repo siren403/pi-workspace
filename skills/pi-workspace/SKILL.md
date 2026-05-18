@@ -102,6 +102,7 @@ host/global `pi update`, global npm install/update는 실행하지 않는다.
 
 `npm config before` 또는 `npm config min-release-age`가 설정되어 있으면 최신 pi 패키지가 npm 정책에 의해 차단될 수 있다.
 이 경우 스마트 모드는 active npm release filter 값을 보고하고, 사용자가 승인하면 해당 upgrade 명령에만 `NPM_CONFIG_BEFORE= NPM_CONFIG_MIN_RELEASE_AGE=0` 일회성 환경 오버라이드를 붙인다.
+샌드박스 Dockerfile은 lock에 고정된 exact pi runtime을 설치해야 하므로, pinned pi 설치 RUN에도 같은 일회성 npm release-policy override를 사용한다.
 에이전트는 raw `pi update`, global npm install/update, 여러 버전 찍어보기 같은 우회를 시도하지 않는다.
 사용자가 정책 변경을 명시적으로 승인하지 않으면 필터 기간이 지난 뒤에만 runtime upgrade를 재시도한다.
 

@@ -1,7 +1,7 @@
 import { resolve } from "path";
 import { readManifest, writeManifest, normalizeManifest, MANIFEST_FILE } from "./manifest.ts";
 import { writeFile, diffFile } from "./fs.ts";
-import { getTemplateFiles, templateRevision } from "./templates.ts";
+import { expectedTemplateContent, getTemplateFiles, templateRevision } from "./templates.ts";
 
 // 코드 생성 파일 (템플릿 없음 → 업데이트 대상 제외)
 const CODE_GENERATED = [MANIFEST_FILE];
@@ -31,7 +31,7 @@ export async function runUpdate(opts: { target: string; force: boolean; diff: bo
       continue;
     }
 
-    const newContent = await Bun.file(tmplPath).text();
+    const newContent = await expectedTemplateContent(target, rel);
     const destPath   = resolve(target, rel);
 
     if (opts.diff) {

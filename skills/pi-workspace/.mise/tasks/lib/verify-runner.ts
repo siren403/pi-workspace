@@ -1,7 +1,7 @@
 import { resolve, join } from "path";
 import { access, constants } from "fs/promises";
 import { readManifest, MANIFEST_FILE } from "./manifest.ts";
-import { listTemplateFiles, TEMPLATE_DIR } from "./templates.ts";
+import { expectedTemplateContent, listTemplateFiles, TEMPLATE_DIR } from "./templates.ts";
 
 type Status = "ok" | "warn" | "error";
 interface Check { name: string; status: Status; message: string; fix?: string }
@@ -49,7 +49,7 @@ async function checkManagedFiles(target: string): Promise<Check[]> {
     if (exists && hasTemplate) {
       const [actual, expected] = await Promise.all([
         Bun.file(path).text(),
-        Bun.file(templatePath).text(),
+        expectedTemplateContent(target, rel),
       ]);
       if (actual !== expected) {
         checks.push({

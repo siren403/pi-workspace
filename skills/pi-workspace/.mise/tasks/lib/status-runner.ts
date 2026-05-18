@@ -2,7 +2,7 @@ import { readdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { readManifest } from "./manifest.ts";
 import { inspectProjectPiRuntime, PI_RUNTIME_TOOL, type ProjectPiRuntime } from "./pi-runtime.ts";
-import { listTemplateFiles, TEMPLATE_DIR } from "./templates.ts";
+import { expectedTemplateContent, listTemplateFiles, TEMPLATE_DIR } from "./templates.ts";
 
 export type PlanItem = { action: string; reason: string };
 
@@ -115,7 +115,7 @@ async function countManagedDrift(target: string): Promise<{ missing: string[]; o
     if (!(await exists(template))) continue;
     const [actual, expected] = await Promise.all([
       Bun.file(dest).text(),
-      Bun.file(template).text(),
+      expectedTemplateContent(target, relPath),
     ]);
     if (actual !== expected) outOfSync.push(relPath);
   }

@@ -38,6 +38,9 @@ export async function runSmartWorkflowScenario(): Promise<void> {
   if (!dockerTemplate.includes("npm install -g --prefix /usr/local @jdxcode/mise")) {
     throw new Error("scaffold Dockerfile should install mise for sandbox-side runtime updates");
   }
+  if (!dockerTemplate.includes("NPM_CONFIG_BEFORE= NPM_CONFIG_MIN_RELEASE_AGE=0 npm install -g --prefix /usr/local @earendil-works/pi-coding-agent@")) {
+    throw new Error("scaffold Dockerfile should install the pinned pi runtime with a one-command npm release-policy override");
+  }
 
   for (const taskName of ["pi", "pi:version"]) {
     const taskText = await Bun.file(join(TEMPLATE_DIR, ".mise/tasks", taskName)).text();
@@ -46,6 +49,9 @@ export async function runSmartWorkflowScenario(): Promise<void> {
     }
     if (!taskText.includes("npm install -g --prefix /usr/local @jdxcode/mise")) {
       throw new Error(`${taskName} should preserve sandbox mise install when regenerating Dockerfile`);
+    }
+    if (!taskText.includes("NPM_CONFIG_BEFORE= NPM_CONFIG_MIN_RELEASE_AGE=0 npm install -g --prefix /usr/local @earendil-works/pi-coding-agent@")) {
+      throw new Error(`${taskName} should preserve pinned pi runtime npm release-policy override when regenerating Dockerfile`);
     }
   }
 

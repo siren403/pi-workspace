@@ -31,7 +31,7 @@ cleanup_yolobox_images() {
   echo "[pi:fork] image cleanup triggered: removing ${remove_count} old yolobox-custom image(s), keeping newest"
   printf '%s\n' "$remove_names" | sed 's/^/[pi:fork]   remove: /'
 
-  cleanup_output=$(docker image rm $remove_ids 2>&1)
+  cleanup_output=$(printf '%s\n' "$remove_names" | xargs docker image rm 2>&1)
   cleanup_status=$?
   if [ "$cleanup_status" -eq 0 ]; then
     echo "[pi:fork] image cleanup complete: removed ${remove_count} image(s)"
