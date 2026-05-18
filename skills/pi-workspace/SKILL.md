@@ -54,9 +54,13 @@ mise run status -- --target <target> --intent "<사용자 요청 원문>"
 `status` 또는 `doctor`가 `bun is required`로 중단되면 사용자가 승인한 뒤 같은 스킬 디렉터리에서 `mise install bun`을 실행하고, 원래 명령을 재시도한다.
 이 bootstrap은 스킬 task 런타임 준비이며 target project 파일을 변경하지 않는다.
 
-`status` task는 파일을 변경하지 않고 스킬 설치 상태, target workspace 상태, 다음 실행 계획을 출력한다. 에이전트는 `Recommended workflow`만 필요한 작업으로 요약하고, `Optional follow-ups`는 선택 항목으로 분리한다.
+`status` task는 파일을 변경하지 않고 스킬 설치 상태, target workspace 상태, 다음 실행 계획을 출력한다. 에이전트는 `Recommended workflow`만 필요한 작업으로 요약하고, `Deferred optional follow-ups`는 선택 항목으로 분리한다.
 
 사용자가 승인하면 에이전트는 `Recommended workflow`를 순서대로 끝까지 진행해 작업 가능한 상태를 만든다. 각 primitive를 다시 메뉴처럼 하나씩 승인받지 않는다. 단, destructive change, managed file overwrite, 외부 설치, 인증 변경처럼 파일/설정에 영향을 주는 실제 변경은 승인 범위 안에서만 수행한다.
+
+`Recommended workflow`가 하나 이상 있으면 승인 요청에는 해당 workflow만 포함한다.
+`Deferred optional follow-ups`는 승인 요청에 포함하지 않고, recommended workflow가 성공한 뒤 별도 후속 제안으로만 언급한다.
+사용자가 명시적으로 요청하지 않는 한 recommended workflow 진행 중 optional 작업을 섞지 않는다.
 
 `/pi-workspace:update`가 필요한 경우:
 - 먼저 managed-file diff를 보여준다.
@@ -96,7 +100,8 @@ update 성공 후 `.agent-workspace.json`은 `manifestVersion`, `template.revisi
 
 5. **계획 제안 후 실행**
    - `Recommended workflow`는 한 번 승인받고 끝까지 진행
-   - `Optional follow-ups`는 사용자가 요청하거나 승인할 때만 진행
+   - `Deferred optional follow-ups`는 승인 요청에 포함하지 않음
+   - `Deferred optional follow-ups`는 recommended workflow 완료 후 사용자가 요청하거나 승인할 때만 진행
    - 승인 전에는 실행 계획과 영향을 받는 파일/설정을 먼저 설명
 
 ## 실행 규칙

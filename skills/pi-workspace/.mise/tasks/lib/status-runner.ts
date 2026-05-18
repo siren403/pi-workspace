@@ -246,6 +246,8 @@ function printPlan(title: string, items: PlanItem[]): void {
 
 function printOptional(title: string, items: PlanItem[]): void {
   console.log(`\n[status] ${title}\n`);
+  console.log("  These are not part of the approval request.");
+  console.log("  Mention them only after the recommended workflow completes, unless the user explicitly asks now.");
   if (items.length === 0) {
     console.log("  none");
     return;
@@ -271,9 +273,10 @@ function printApprovalGuidance(plan: PlanItem[]): void {
     console.log("  No required workflow is needed.");
     return;
   }
-  console.log("  Ask for one approval to run the recommended workflow end-to-end.");
+  console.log("  Ask for one approval to run only the recommended workflow end-to-end.");
   console.log("  After approval, execute the steps in order and continue until the workspace is usable or a real blocker appears.");
   console.log("  If /pi-workspace:update is needed, show the managed-file diff first, then apply the managed refresh only after that approval.");
+  console.log("  Do not include deferred optional follow-ups in this approval request.");
 }
 
 export async function buildStatusReport(targetArg: string, intent = ""): Promise<StatusReport> {
@@ -332,7 +335,7 @@ export function printStatusReport(report: StatusReport): void {
 
   printPlan("Recommended workflow", report.recommendedWorkflow);
   printApprovalGuidance(report.recommendedWorkflow);
-  printOptional("Optional follow-ups", report.optionalFollowups);
+  printOptional("Deferred optional follow-ups", report.optionalFollowups);
   printSkipped(report.notNeeded);
   console.log("");
 }
