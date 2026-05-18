@@ -102,6 +102,7 @@ host/global `pi update`, global npm install/update는 실행하지 않는다.
 
 pi runtime 업데이트는 host project root에서 실행하는 것이 가장 단순한 기본 경로다.
 스마트 모드는 `PI_WORKSPACE_SANDBOX=1`, `/.dockerenv`, `/proc/1/cgroup` 같은 신호로 sandbox/container 내부 실행을 감지한다.
+현재 skill scaffold/update가 관리하는 `.yolobox.Dockerfile`은 sandbox 내부에서 `mise`를 사용할 수 있도록 mise binary를 함께 설치한다.
 현재 실행 위치가 sandbox이고 `mise`가 있으면 mounted project의 `mise.lock` 갱신까지는 진행할 수 있다.
 이 경우 갱신 후 sandbox 세션을 종료하고 host project root에서 `mise install`을 실행한 뒤 `mise run pi`로 재진입하라고 안내한다.
 sandbox의 mise cache는 host와 공유되지 않을 수 있으므로, sandbox 안에서의 upgrade만으로 host 재진입 준비가 끝났다고 보지 않는다.

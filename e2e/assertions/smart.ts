@@ -61,6 +61,12 @@ export function assertPiRuntimeSandboxIntent(report: StatusReport): void {
   assertNotIncludes(actions(report), "/pi-workspace:verify", "sandbox pi runtime should not continue verify");
 }
 
+export function assertPiRuntimeSandboxWithoutMise(report: StatusReport): void {
+  assertIncludes(actions(report), "exit sandbox, then run /pi-workspace:update from the host project root", "sandbox without mise should refresh managed Dockerfile from host");
+  assertIncludes(actions(report), "mise run pi", "sandbox without mise should re-enter after Dockerfile refresh");
+  assertNotIncludes(actions(report), "mise upgrade --local npm:@earendil-works/pi-coding-agent", "sandbox without mise should not attempt lock mutation");
+}
+
 export function assertMissingPackage(report: StatusReport): void {
   assertIncludes(report.target.missingPackages, "npm:pi-subagents", "missing package");
   assertIncludes(actions(report), "/pi-workspace:doctor", "missing package workflow");

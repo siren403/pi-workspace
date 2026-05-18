@@ -197,6 +197,24 @@ function buildPlan(intent: string, target: Awaited<ReturnType<typeof inspectTarg
       });
       return plan;
     } else if (!projectPiRuntime.environment.miseAvailable) {
+      if (projectPiRuntime.environment.location === "sandbox") {
+        if (target.drift.missing.includes(".yolobox.Dockerfile") || target.drift.outOfSync.includes(".yolobox.Dockerfile")) {
+          plan.push({
+            action: "exit sandbox, then run /pi-workspace:update from the host project root",
+            reason: "sandbox has no mise and the managed .yolobox.Dockerfile is not current; refresh the Dockerfile so the next sandbox includes mise",
+          });
+          plan.push({
+            action: "mise run pi",
+            reason: "re-enter the sandbox after the managed Dockerfile refresh rebuilds the sandbox image",
+          });
+          return plan;
+        }
+        plan.push({
+          action: "exit sandbox, then rerun /pi-workspace pi update from the host project root",
+          reason: "sandbox has no mise, so the project pi runtime lock update must be planned from the host; do not run host/global pi update",
+        });
+        return plan;
+      }
       plan.push({
         action: "install or activate mise on the host, then rerun /pi-workspace pi update",
         reason: `project pi runtime update requires mise; current environment is ${projectPiRuntime.environment.location}; do not run host/global pi update as a substitute`,
@@ -399,6 +417,10 @@ function printApprovalGuidance(plan: PlanItem[]): void {
     console.log("  Run the dry-run step first and report unexpected output before the mutating upgrade.");
     console.log("  Do not run host/global pi update or global npm update for this workflow.");
     console.log("  After success, tell the user to exit any existing sandbox/pi session and run mise run pi again.");
+  } else if (plan.some((item) => item.action === "exit sandbox, then run /pi-workspace:update from the host project root")) {
+    console.log("  This pi runtime update request was detected inside a sandbox without mise.");
+    console.log("  The target Dockerfile is also stale, so refresh managed files from the host before trying the runtime update again.");
+    console.log("  Do not run project runtime mutation from this sandbox.");
   } else if (plan.some((item) => item.action.includes("rerun /pi-workspace pi update"))) {
     console.log("  This pi runtime update request was detected inside a sandbox or unknown environment.");
     console.log("  Do not run project runtime mutation from here.");

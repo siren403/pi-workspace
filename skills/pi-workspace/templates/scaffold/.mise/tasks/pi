@@ -86,6 +86,9 @@ if [ -n "$PI_VERSION" ]; then
   esac
   cat > .yolobox.Dockerfile << EOF
 USER root
+ENV PI_WORKSPACE_SANDBOX=1
+ENV MISE_INSTALL_PATH=/usr/local/bin/mise
+RUN npm install -g --prefix /usr/local @jdxcode/mise
 RUN npm install -g --prefix /usr/local @earendil-works/pi-coding-agent@${PI_VERSION}
 RUN echo 'if [ -n "\$PI_AUTORUN_CMD" ]; then exec sh -lc "\$PI_AUTORUN_CMD"; elif [ -n "\$PI_AUTORUN" ]; then exec pi; fi' >> /etc/bash.bashrc
 USER yolo

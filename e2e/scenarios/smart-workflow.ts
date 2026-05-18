@@ -1,11 +1,12 @@
 import { cleanWorkspaceFixture, driftedWorkspaceFixture, missingPackageFixture, newProjectFixture, staleManifestFixture } from "../fixtures/workspace.ts";
-import { assertCleanWorkspace, assertDriftedWorkspace, assertMissingPackage, assertNewProject, assertPiRuntimeSandboxIntent, assertPiRuntimeUpdateIntent, assertStaleManifestWorkspace, assertUpdateIntent } from "../assertions/smart.ts";
+import { assertCleanWorkspace, assertDriftedWorkspace, assertMissingPackage, assertNewProject, assertPiRuntimeSandboxIntent, assertPiRuntimeSandboxWithoutMise, assertPiRuntimeUpdateIntent, assertStaleManifestWorkspace, assertUpdateIntent } from "../assertions/smart.ts";
 import { $ } from "bun";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const SKILL_DIR = new URL("../../skills/pi-workspace/", import.meta.url).pathname;
+const TEMPLATE_DIR = join(SKILL_DIR, "templates/scaffold");
 
 async function status(target: string, intent: string, env: Record<string, string> = {}) {
   const result = await $`mise run status -- --target ${target} --intent ${intent} --json`
@@ -30,6 +31,24 @@ async function withFixture<T extends { cleanup(): Promise<void> }>(fixture: Prom
 }
 
 export async function runSmartWorkflowScenario(): Promise<void> {
+  const dockerTemplate = await Bun.file(join(TEMPLATE_DIR, ".yolobox.Dockerfile")).text();
+  if (!dockerTemplate.includes("ENV PI_WORKSPACE_SANDBOX=1")) {
+    throw new Error("scaffold Dockerfile should mark pi-workspace sandbox environment");
+  }
+  if (!dockerTemplate.includes("npm install -g --prefix /usr/local @jdxcode/mise")) {
+    throw new Error("scaffold Dockerfile should install mise for sandbox-side runtime updates");
+  }
+
+  for (const taskName of ["pi", "pi:version"]) {
+    const taskText = await Bun.file(join(TEMPLATE_DIR, ".mise/tasks", taskName)).text();
+    if (!taskText.includes("ENV PI_WORKSPACE_SANDBOX=1")) {
+      throw new Error(`${taskName} should preserve sandbox environment marker when regenerating Dockerfile`);
+    }
+    if (!taskText.includes("npm install -g --prefix /usr/local @jdxcode/mise")) {
+      throw new Error(`${taskName} should preserve sandbox mise install when regenerating Dockerfile`);
+    }
+  }
+
   await withFixture(newProjectFixture(), async ({ target }) => {
     assertNewProject(await status(target, "처음 세팅"));
   });
@@ -88,6 +107,21 @@ export async function runSmartWorkflowScenario(): Promise<void> {
     assertPiRuntimeSandboxIntent(await status(target, "샌드박스 pi 업데이트 안내", {
       PI_WORKSPACE_TEST_RUNTIME_LOCATION: "sandbox",
       PI_WORKSPACE_TEST_MISE_AVAILABLE: "1",
+      PI_WORKSPACE_TEST_PI_RUNTIME_OUTDATED_JSON: JSON.stringify({
+        "npm:@earendil-works/pi-coding-agent": {
+          requested: "latest",
+          current: "0.74.0",
+          latest: "0.75.1",
+          source: { type: "mise.toml", path: `${target}/.mise.toml` },
+        },
+      }),
+    }));
+  });
+
+  await withFixture(driftedWorkspaceFixture(), async ({ target }) => {
+    assertPiRuntimeSandboxWithoutMise(await status(target, "샌드박스 pi 업데이트 안내", {
+      PI_WORKSPACE_TEST_RUNTIME_LOCATION: "sandbox",
+      PI_WORKSPACE_TEST_MISE_AVAILABLE: "0",
       PI_WORKSPACE_TEST_PI_RUNTIME_OUTDATED_JSON: JSON.stringify({
         "npm:@earendil-works/pi-coding-agent": {
           requested: "latest",
