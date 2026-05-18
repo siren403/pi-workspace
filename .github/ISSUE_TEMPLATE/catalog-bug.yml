@@ -1,0 +1,32 @@
+name: Catalog bug or correction
+description: Report stale, inaccurate, risky, or confusing catalog metadata.
+title: "[catalog]: "
+labels: ["catalog", "bug"]
+body:
+  - type: input
+    id: entry
+    attributes:
+      label: Catalog entry id
+      description: Package, feature, recipe, or extension profile id.
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What is stale, incorrect, risky, or confusing?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Suggested correction
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Link docs, release notes, install output, or reproduction steps.
+    validations:
+      required: false

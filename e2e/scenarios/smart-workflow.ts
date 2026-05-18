@@ -1,6 +1,9 @@
 import { cleanWorkspaceFixture, driftedWorkspaceFixture, missingPackageFixture, newProjectFixture, staleManifestFixture } from "../fixtures/workspace.ts";
 import { assertCleanWorkspace, assertDriftedWorkspace, assertMissingPackage, assertNewProject, assertStaleManifestWorkspace, assertUpdateIntent } from "../assertions/smart.ts";
 import { $ } from "bun";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const SKILL_DIR = new URL("../../skills/pi-workspace/", import.meta.url).pathname;
 
@@ -62,6 +65,29 @@ export async function runSmartWorkflowScenario(): Promise<void> {
   await withFixture(missingPackageFixture(), async ({ target }) => {
     assertMissingPackage(await status(target, "상태 확인"));
   });
+
+  const noInstallRoot = await mkdtemp(join(tmpdir(), "pi-workspace-no-install-"));
+  try {
+    const target = join(noInstallRoot, "project");
+    await mkdir(target, { recursive: true });
+    const result = await $`mise run scaffold -- --target ${target} --no-install`.cwd(SKILL_DIR).quiet();
+    const output = `${result.stdout.toString()}\n${result.stderr.toString()}`;
+    if (output.includes("Installing required pi packages")) {
+      throw new Error("scaffold --no-install should not attempt required pi package install");
+    }
+    if (!output.includes("Skipping tool/package install because --no-install was set.")) {
+      throw new Error("scaffold --no-install should explain that installs were skipped");
+    }
+    if (await Bun.file(join(target, ".pi", "settings.json")).exists()) {
+      throw new Error("scaffold --no-install should not create .pi/settings.json");
+    }
+  } finally {
+    if (process.env.PI_WORKSPACE_E2E_KEEP_TEMP === "1") {
+      console.log(`[e2e] keeping temp fixture: ${noInstallRoot}`);
+    } else {
+      await rm(noInstallRoot, { recursive: true, force: true });
+    }
+  }
 
   console.log("[e2e:smart] smart-workflow passed");
 }

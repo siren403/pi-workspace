@@ -1,0 +1,88 @@
+name: Extension proposal
+description: Propose a pi extension package for the curated pi-workspace catalog.
+title: "[extension]: "
+labels: ["catalog", "extension-proposal"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Proposals are reviewed for catalog fit. Acceptance may be `listed`, `experimental`, `recommended`, or declined.
+        User-scope recommendations require a clear rationale.
+  - type: input
+    id: package
+    attributes:
+      label: Install target
+      description: Example: npm:pi-powerline-footer
+      placeholder: npm:
+    validations:
+      required: true
+  - type: input
+    id: upstream
+    attributes:
+      label: Upstream repository or support URL
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Short factual description
+      description: Avoid marketing language. State what the extension does.
+    validations:
+      required: true
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      options:
+        - workflow
+        - quality
+        - integration
+        - ui
+    validations:
+      required: true
+  - type: textarea
+    id: features
+    attributes:
+      label: Features
+      description: List the feature ids this package supports, or suggest new feature ids.
+    validations:
+      required: true
+  - type: dropdown
+    id: recommended_scope
+    attributes:
+      label: Suggested recommended scope
+      options:
+        - project
+        - user
+    validations:
+      required: true
+  - type: textarea
+    id: scope_rationale
+    attributes:
+      label: Scope rationale
+      description: Explain why this belongs in project or user scope.
+    validations:
+      required: true
+  - type: textarea
+    id: risks
+    attributes:
+      label: Risky behavior
+      description: Mention network access, shell execution, filesystem writes, credential access, MCP bridging, or prompt/tool behavior changes.
+    validations:
+      required: true
+  - type: textarea
+    id: smoke_test
+    attributes:
+      label: Smoke test result
+      description: Include the command you ran, for example `pi install npm:<pkg> -l`, and the result.
+    validations:
+      required: true
+  - type: dropdown
+    id: affiliation
+    attributes:
+      label: Are you affiliated with the package?
+      options:
+        - "no"
+        - "yes"
+    validations:
+      required: true

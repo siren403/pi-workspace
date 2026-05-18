@@ -192,6 +192,17 @@ function buildPlan(intent: string, target: Awaited<ReturnType<typeof inspectTarg
     });
   }
 
+  if (target.missingPackages.length > 0) {
+    plan.push({
+      action: "mise trust --yes && mise exec -- pi install npm:pi-subagents -l",
+      reason: `required pi packages are missing from project scope: ${target.missingPackages.join(", ")}`,
+    });
+    plan.push({
+      action: "/pi-workspace:verify",
+      reason: "confirm required pi packages after project-scope install",
+    });
+  }
+
   if (wantsSubagents || (target.agentOverrideNames.length === 0 && target.missingPackages.length === 0)) {
     plan.push({
       action: "/pi-workspace:subagents",
@@ -206,6 +217,23 @@ function buildOptionalFollowups(intent: string, target: Awaited<ReturnType<typeo
   const followups: PlanItem[] = [];
   const wantsPrompt = intentIncludes(intent, ["prompt", "agents", "프롬프트", "지침"]);
   const wantsReport = intentIncludes(intent, ["bug", "issue", "report", "버그", "이슈", "리포트"]);
+  const wantsExtensions = intentIncludes(intent, [
+    "extension",
+    "package",
+    "profile",
+    "recipe",
+    "feature",
+    "statusline",
+    "lsp",
+    "quota",
+    "codex",
+    "opencode",
+    "확장",
+    "패키지",
+    "프로필",
+    "레시피",
+    "상태라인",
+  ]);
 
   if (wantsPrompt || target.promptSections.length === 0) {
     followups.push({
@@ -218,6 +246,13 @@ function buildOptionalFollowups(intent: string, target: Awaited<ReturnType<typeo
     followups.push({
       action: "/pi-workspace:report",
       reason: "requested issue reporting",
+    });
+  }
+
+  if (wantsExtensions) {
+    followups.push({
+      action: "/pi-workspace:extensions --profile <extension-profile>",
+      reason: "requested extension/profile/feature guidance; recommendations are advisory and install only after explicit approval",
     });
   }
 

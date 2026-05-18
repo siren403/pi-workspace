@@ -15,6 +15,7 @@ pi-workspace skill package의 릴리즈를 준비한다. 변경은 작게 묶고
 |------|------|-----------|
 | dependency | `pi` 최신 버전 반영 | pin 위치 갱신 + e2e |
 | skill behavior | SKILL.md, status, task 로직 변경 | e2e + install-check |
+| catalog | pi extension catalog, feature/recipe/profile, scope policy 변경 | catalog-validate + extensions smoke |
 | template | scaffold 템플릿 변경 | drift/update e2e |
 | release process | 배포/검증 지침 변경 | install-check + remote discovery |
 | docs only | README/SKILL 문서 | discovery + diff check |
@@ -59,9 +60,14 @@ pi-workspace skill package의 릴리즈를 준비한다. 변경은 작게 묶고
    - `skills/pi-workspace/SKILL.md`
    - `skills/pi-workspace/README.md`
    - `skills/pi-workspace/skills/*/SKILL.md`
+   - `skills/pi-workspace/.mise/tasks/extensions.ts`
+   - `skills/pi-workspace/.mise/tasks/lib/extensions-catalog.ts`
+   - `.github/**`
 
 4. 검증 실행
    ```bash
+   mise run skill:catalog-validate
+   cd skills/pi-workspace && mise run extensions -- --list
    mise run e2e:smart
    mise run e2e:cold-start
    mise run skill:install-check
@@ -96,6 +102,7 @@ pi-workspace skill package의 릴리즈를 준비한다. 변경은 작게 묶고
 ## Stop Conditions
 
 - `e2e:smart`, `e2e:cold-start`, `skill:install-check`, `git diff --check` 실패
+- `skill:catalog-validate` 실패 또는 extension profile/recipe 추천이 자동 설치·삭제로 동작
 - skills.sh full-depth discovery에서 예상 subskill 누락
 - managed template 변경이 있는데 drift/update e2e가 깨짐
 - release 작업이 registry 배포를 요구하는 방향으로 흐름

@@ -112,10 +112,17 @@ export async function runScaffold(opts: ScaffoldOptions): Promise<void> {
   await writeManifest(target, manifest);
   console.log("  ✓ .agent-workspace.json");
 
-  // 6. --install 플래그: mise trust + install + lock
+  // 6. --install 플래그: mise trust + install + lock + required pi packages
   if (opts.install) {
     console.log("\n[scaffold] Running mise install...");
-    await $`mise trust`.cwd(target).quiet().nothrow();
+    const trustResult = await $`mise trust --yes`.cwd(target).quiet().nothrow();
+    if (trustResult.exitCode !== 0) {
+      console.warn("  ⚠ mise trust failed — run manually: mise trust --yes");
+      console.warn(`    ${trustResult.stderr.toString().trim()}`);
+      printActions(actions, false);
+      printNextSteps();
+      return;
+    }
     const installResult = await $`mise install`.cwd(target).nothrow();
     if (installResult.exitCode === 0) {
       console.log("  ✓ mise install complete (node + pi)");
@@ -123,20 +130,21 @@ export async function runScaffold(opts: ScaffoldOptions): Promise<void> {
     } else {
       console.warn("  ⚠ mise install failed — run manually: mise install");
     }
-  }
 
-  // 6. pi install npm:pi-subagents -l (mise install 이후 실행)
-  console.log("\n[scaffold] Installing required pi packages...\n");
-  const piResult = await $`mise exec -- pi install npm:pi-subagents -l`
-    .cwd(target)
-    .quiet()
-    .nothrow();
+    console.log("\n[scaffold] Installing required pi packages...\n");
+    const piResult = await $`mise exec -- pi install npm:pi-subagents -l`
+      .cwd(target)
+      .quiet()
+      .nothrow();
 
-  if (piResult.exitCode === 0) {
-    console.log("  ✓ npm:pi-subagents installed (project scope)");
+    if (piResult.exitCode === 0) {
+      console.log("  ✓ npm:pi-subagents installed (project scope)");
+    } else {
+      console.warn("  ⚠ pi install failed:", piResult.stderr.toString().trim());
+      console.warn("    Run manually from target: mise trust --yes && mise exec -- pi install npm:pi-subagents -l");
+    }
   } else {
-    console.warn("  ⚠ pi install failed:", piResult.stderr.toString().trim());
-    console.warn("    Run manually: pi install npm:pi-subagents -l");
+    console.log("\n[scaffold] Skipping tool/package install because --no-install was set.");
   }
 
   // 7. 결과 출력

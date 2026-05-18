@@ -1,0 +1,61 @@
+name: Extension recipe or profile proposal
+description: Propose a feature recipe or advisory extension profile.
+title: "[extension-profile]: "
+labels: ["catalog", "profile-proposal"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Recipes and extension profiles are advisory. They must not imply automatic install, removal, or hard pinning.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Proposal type
+      options:
+        - feature
+        - recipe
+        - extension profile
+    validations:
+      required: true
+  - type: input
+    id: id
+    attributes:
+      label: Suggested id
+      description: Lowercase kebab-case.
+    validations:
+      required: true
+  - type: textarea
+    id: audience
+    attributes:
+      label: Target user or project context
+      description: Example: Codex + OpenCode users who want a shared statusline.
+    validations:
+      required: true
+  - type: textarea
+    id: packages
+    attributes:
+      label: Packages, features, or recipes involved
+      description: List existing ids or proposed new ids.
+    validations:
+      required: true
+  - type: textarea
+    id: rationale
+    attributes:
+      label: Recommendation rationale
+      description: Explain why this grouping is useful and when it should not be used.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope considerations
+      description: Mention whether project or user scope is more appropriate for included packages.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives or overlaps
+      description: Mention overlapping extensions, recipes, or profiles.
+    validations:
+      required: false

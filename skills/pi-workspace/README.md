@@ -60,7 +60,7 @@ Primitive commands are available for explicit workflows and automation:
 | `/pi-workspace:scaffold` | Create a new workspace |
 | `/pi-workspace:update` | Re-apply managed files from templates |
 | `/pi-workspace:subagents` | Configure sub-agents from authenticated providers |
-| `/pi-workspace:extensions` | Browse and install pi extension catalog |
+| `/pi-workspace:extensions` | Browse pi extensions, get feature/recipe/profile recommendations, and install with explicit scope |
 | `/pi-workspace:prompts` | Manage and synthesize agent instruction prompts |
 | `/pi-workspace:release` | Prepare and validate pi-workspace skill package releases |
 
@@ -162,18 +162,35 @@ Reads `pi --list-models`, proposes role assignments (explore / bulk / patch / re
 /pi-workspace:extensions
 ```
 
-Shows the curated extension catalog with current install status, then installs selected packages at project scope (`pi install -l`).
+Shows the curated extension catalog with current install status and recommended install scope. The default policy is project scope (`pi install -l`), but catalog entries can recommend user scope for personal UI features such as statuslines.
 
-| Package | Category |
-|---------|----------|
-| `pi-subagents` | workflow — required for sub-agents |
-| `context-mode` | workflow |
-| `ask-user-question` | workflow |
-| `rpiv-todo` | workflow |
-| `pi-lens` | quality |
-| `pi-web-access` | integration |
-| `pi-mcp-adapter` | integration |
-| `pi-powerline-footer` | ui |
+Recommendation flows are read-only:
+
+```bash
+mise run extensions -- --target <path> --feature statusline
+mise run extensions -- --target <path> --recipe multi-provider-statusline
+mise run extensions -- --target <path> --profile codex-opencode
+```
+
+Installs are explicit:
+
+```bash
+mise run extensions -- --target <path> --install pi-lens --scope project
+mise run extensions -- --target <path> --install pi-powerline-footer --scope user
+```
+
+| Package | Category | Recommended scope |
+|---------|----------|-------------------|
+| `pi-subagents` | workflow — required for sub-agents | project |
+| `context-mode` | workflow | project |
+| `ask-user-question` | workflow | user |
+| `rpiv-todo` | workflow | project |
+| `pi-lens` | quality | project |
+| `pi-web-access` | integration | project |
+| `pi-mcp-adapter` | integration | project |
+| `pi-powerline-footer` | ui | user |
+
+Feature, recipe, and extension profile recommendations are advisory. They never auto-install or remove packages, and non-recommended scope installs are reported as advice only.
 
 ### Agent instruction prompts
 

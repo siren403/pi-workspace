@@ -48,4 +48,5 @@ export function assertMissingPackage(report: StatusReport): void {
   assertIncludes(report.target.missingPackages, "npm:pi-subagents", "missing package");
   assertIncludes(actions(report), "/pi-workspace:doctor", "missing package workflow");
   assertIncludes(actions(report), "/pi-workspace:verify", "missing package workflow");
+  assertIncludes(actions(report), "mise trust --yes && mise exec -- pi install npm:pi-subagents -l", "missing package recovery workflow");
 }

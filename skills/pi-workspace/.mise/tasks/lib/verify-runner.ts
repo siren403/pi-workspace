@@ -87,7 +87,12 @@ async function checkPiPackages(target: string): Promise<Check> {
   const settingsPath = resolve(target, ".pi", "settings.json");
   const f = Bun.file(settingsPath);
   if (!await f.exists())
-    return { name: "pi-packages", status: "warn", message: ".pi/settings.json not found — pi install not yet run" };
+    return {
+      name: "pi-packages",
+      status: "warn",
+      message: ".pi/settings.json not found — required pi packages were not installed",
+      fix: "Run from target: mise trust --yes && mise exec -- pi install npm:pi-subagents -l",
+    };
   const settings = await f.json() as { packages?: string[] };
   const pkgs = settings.packages ?? [];
   const missing = REQUIRED_PACKAGES.filter((p) => !pkgs.includes(p));
@@ -96,7 +101,7 @@ async function checkPiPackages(target: string): Promise<Check> {
   return {
     name: "pi-packages", status: "error",
     message: `Missing packages: ${missing.join(", ")}`,
-    fix: `pi install ${missing.join(" ")} -l`,
+    fix: `Run from target: mise trust --yes && mise exec -- pi install ${missing.join(" ")} -l`,
   };
 }
 
