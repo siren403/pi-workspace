@@ -195,11 +195,25 @@ function buildPlan(intent: string, target: Awaited<ReturnType<typeof inspectTarg
         action: "inspect target .mise.toml",
         reason: `project pi runtime is not managed by target .mise.toml (${PI_RUNTIME_TOOL} was not found); do not run host/global pi update`,
       });
+      return plan;
+    } else if (projectPiRuntime.environment.location !== "host") {
+      plan.push({
+        action: "exit sandbox and rerun /pi-workspace pi update from the host project root",
+        reason: `project pi runtime updates must run on the host; current environment is ${projectPiRuntime.environment.location}`,
+      });
+      return plan;
+    } else if (!projectPiRuntime.environment.miseAvailable) {
+      plan.push({
+        action: "install or activate mise on the host, then rerun /pi-workspace pi update",
+        reason: "project pi runtime update requires host mise; do not run host/global pi update as a substitute",
+      });
+      return plan;
     } else if (projectPiRuntime.checkError) {
       plan.push({
         action: "inspect project pi runtime manually",
         reason: `could not check project pi runtime freshness: ${projectPiRuntime.checkError}`,
       });
+      return plan;
     } else if (projectPiRuntime.outdated) {
       plan.push({
         action: `mise upgrade --dry-run --local ${PI_RUNTIME_TOOL}`,
@@ -370,8 +384,12 @@ function printApprovalGuidance(plan: PlanItem[]): void {
   if (plan.some((item) => item.action === `mise upgrade --local ${PI_RUNTIME_TOOL}`)) {
     console.log("  Project pi runtime upgrade may update mise.lock and the local mise tool cache.");
     console.log("  Run the dry-run step first and report unexpected output before the mutating upgrade.");
-  console.log("  Do not run host/global pi update or global npm update for this workflow.");
-  console.log("  After success, tell the user to exit any existing sandbox/pi session and run mise run pi again.");
+    console.log("  Do not run host/global pi update or global npm update for this workflow.");
+    console.log("  After success, tell the user to exit any existing sandbox/pi session and run mise run pi again.");
+  } else if (plan.some((item) => item.action.includes("rerun /pi-workspace pi update"))) {
+    console.log("  This pi runtime update request was detected inside a sandbox or unknown environment.");
+    console.log("  Do not run project runtime mutation from here.");
+    console.log("  Tell the user to exit the sandbox, run /pi-workspace pi update from the host project root, then run mise run pi again.");
   }
   console.log("  If /pi-workspace:update is needed, show the managed-file diff with mise run update -- --target <target> --diff.");
   console.log("  Do not use git diff for managed-file previews; the target may not be a git repository.");
@@ -441,6 +459,9 @@ export function printStatusReport(report: StatusReport): void {
     console.log("\n[status] Project pi runtime\n");
     console.log(`  configured in target .mise.toml: ${runtime.configured ? "yes" : "no"}`);
     if (runtime.sourcePath) console.log(`  source: ${runtime.sourcePath}`);
+    console.log(`  execution location: ${runtime.environment.location}`);
+    console.log(`  mise available here: ${runtime.environment.miseAvailable ? "yes" : "no"}`);
+    console.log(`  environment signals: ${runtime.environment.signals.length ? runtime.environment.signals.join(", ") : "none"}`);
     if (runtime.requested) console.log(`  requested: ${runtime.requested}`);
     if (runtime.current) console.log(`  current: ${runtime.current}`);
     if (runtime.latest) console.log(`  latest: ${runtime.latest}`);
@@ -448,7 +469,11 @@ export function printStatusReport(report: StatusReport): void {
     if (runtime.checkError) console.log(`  check error: ${runtime.checkError}`);
     if (runtime.outdated) {
       console.log(`  update command: mise upgrade --local ${PI_RUNTIME_TOOL}`);
-      console.log("  after update: exit any existing sandbox/pi session, then run mise run pi from the target project");
+      if (runtime.environment.location === "host" && runtime.environment.miseAvailable) {
+        console.log("  after update: exit any existing sandbox/pi session, then run mise run pi from the target project");
+      } else {
+        console.log("  update must be run from the host project root; exit the sandbox and rerun /pi-workspace pi update");
+      }
     }
     console.log("  host/global pi update is not managed here");
   }

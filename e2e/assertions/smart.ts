@@ -52,6 +52,12 @@ export function assertPiRuntimeUpdateIntent(report: StatusReport): void {
   assertIncludes(actions(report), "/pi-workspace:verify", "pi runtime verify workflow");
 }
 
+export function assertPiRuntimeSandboxIntent(report: StatusReport): void {
+  assertNotIncludes(actions(report), "mise upgrade --dry-run --local npm:@earendil-works/pi-coding-agent", "sandbox pi runtime should not dry-run upgrade");
+  assertNotIncludes(actions(report), "mise upgrade --local npm:@earendil-works/pi-coding-agent", "sandbox pi runtime should not upgrade");
+  assertIncludes(actions(report), "exit sandbox and rerun /pi-workspace pi update from the host project root", "sandbox pi runtime host rerun workflow");
+}
+
 export function assertMissingPackage(report: StatusReport): void {
   assertIncludes(report.target.missingPackages, "npm:pi-subagents", "missing package");
   assertIncludes(actions(report), "/pi-workspace:doctor", "missing package workflow");

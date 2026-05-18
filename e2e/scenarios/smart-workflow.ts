@@ -1,5 +1,5 @@
 import { cleanWorkspaceFixture, driftedWorkspaceFixture, missingPackageFixture, newProjectFixture, staleManifestFixture } from "../fixtures/workspace.ts";
-import { assertCleanWorkspace, assertDriftedWorkspace, assertMissingPackage, assertNewProject, assertPiRuntimeUpdateIntent, assertStaleManifestWorkspace, assertUpdateIntent } from "../assertions/smart.ts";
+import { assertCleanWorkspace, assertDriftedWorkspace, assertMissingPackage, assertNewProject, assertPiRuntimeSandboxIntent, assertPiRuntimeUpdateIntent, assertStaleManifestWorkspace, assertUpdateIntent } from "../assertions/smart.ts";
 import { $ } from "bun";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -71,6 +71,23 @@ export async function runSmartWorkflowScenario(): Promise<void> {
 
   await withFixture(cleanWorkspaceFixture(), async ({ target }) => {
     assertPiRuntimeUpdateIntent(await status(target, "pi update", {
+      PI_WORKSPACE_TEST_RUNTIME_LOCATION: "host",
+      PI_WORKSPACE_TEST_MISE_AVAILABLE: "1",
+      PI_WORKSPACE_TEST_PI_RUNTIME_OUTDATED_JSON: JSON.stringify({
+        "npm:@earendil-works/pi-coding-agent": {
+          requested: "latest",
+          current: "0.74.0",
+          latest: "0.75.1",
+          source: { type: "mise.toml", path: `${target}/.mise.toml` },
+        },
+      }),
+    }));
+  });
+
+  await withFixture(cleanWorkspaceFixture(), async ({ target }) => {
+    assertPiRuntimeSandboxIntent(await status(target, "샌드박스 pi 업데이트 안내", {
+      PI_WORKSPACE_TEST_RUNTIME_LOCATION: "sandbox",
+      PI_WORKSPACE_TEST_MISE_AVAILABLE: "1",
       PI_WORKSPACE_TEST_PI_RUNTIME_OUTDATED_JSON: JSON.stringify({
         "npm:@earendil-works/pi-coding-agent": {
           requested: "latest",
