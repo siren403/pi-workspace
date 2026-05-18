@@ -62,6 +62,7 @@ Primitive commands are available for explicit workflows and automation:
 | `/pi-workspace:subagents` | Configure sub-agents from authenticated providers |
 | `/pi-workspace:extensions` | Browse and install pi extension catalog |
 | `/pi-workspace:prompts` | Manage and synthesize agent instruction prompts |
+| `/pi-workspace:release` | Prepare and validate pi-workspace skill package releases |
 
 ## Prerequisites
 
