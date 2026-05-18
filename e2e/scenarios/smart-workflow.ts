@@ -1,5 +1,5 @@
 import { cleanWorkspaceFixture, driftedWorkspaceFixture, missingPackageFixture, newProjectFixture, staleManifestFixture } from "../fixtures/workspace.ts";
-import { assertCleanWorkspace, assertDriftedWorkspace, assertMissingPackage, assertNewProject, assertStaleManifestWorkspace, assertUpdateIntent } from "../assertions/smart.ts";
+import { assertCleanWorkspace, assertDriftedWorkspace, assertMissingPackage, assertNewProject, assertPiRuntimeUpdateIntent, assertStaleManifestWorkspace, assertUpdateIntent } from "../assertions/smart.ts";
 import { $ } from "bun";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -7,8 +7,11 @@ import { join } from "node:path";
 
 const SKILL_DIR = new URL("../../skills/pi-workspace/", import.meta.url).pathname;
 
-async function status(target: string, intent: string) {
-  const result = await $`mise run status -- --target ${target} --intent ${intent} --json`.cwd(SKILL_DIR).quiet();
+async function status(target: string, intent: string, env: Record<string, string> = {}) {
+  const result = await $`mise run status -- --target ${target} --intent ${intent} --json`
+    .cwd(SKILL_DIR)
+    .env({ ...process.env, ...env })
+    .quiet();
   return JSON.parse(result.stdout.toString());
 }
 
@@ -64,6 +67,19 @@ export async function runSmartWorkflowScenario(): Promise<void> {
 
   await withFixture(missingPackageFixture(), async ({ target }) => {
     assertMissingPackage(await status(target, "상태 확인"));
+  });
+
+  await withFixture(cleanWorkspaceFixture(), async ({ target }) => {
+    assertPiRuntimeUpdateIntent(await status(target, "pi update", {
+      PI_WORKSPACE_TEST_PI_RUNTIME_OUTDATED_JSON: JSON.stringify({
+        "npm:@earendil-works/pi-coding-agent": {
+          requested: "latest",
+          current: "0.74.0",
+          latest: "0.75.1",
+          source: { type: "mise.toml", path: `${target}/.mise.toml` },
+        },
+      }),
+    }));
   });
 
   const noInstallRoot = await mkdtemp(join(tmpdir(), "pi-workspace-no-install-"));

@@ -44,6 +44,14 @@ export function assertUpdateIntent(report: StatusReport): void {
   assertIncludes(actions(report), "npx skills add siren403/pi-workspace --full-depth", "update intent workflow");
 }
 
+export function assertPiRuntimeUpdateIntent(report: StatusReport): void {
+  assertNotIncludes(actions(report), "npx skills add siren403/pi-workspace --full-depth", "pi runtime update should not reinstall skill");
+  assertIncludes(actions(report), "mise upgrade --dry-run --local npm:@earendil-works/pi-coding-agent", "pi runtime dry-run workflow");
+  assertIncludes(actions(report), "mise upgrade --local npm:@earendil-works/pi-coding-agent", "pi runtime update workflow");
+  assertIncludes(actions(report), "mise exec -- pi --version", "pi runtime version check workflow");
+  assertIncludes(actions(report), "/pi-workspace:verify", "pi runtime verify workflow");
+}
+
 export function assertMissingPackage(report: StatusReport): void {
   assertIncludes(report.target.missingPackages, "npm:pi-subagents", "missing package");
   assertIncludes(actions(report), "/pi-workspace:doctor", "missing package workflow");

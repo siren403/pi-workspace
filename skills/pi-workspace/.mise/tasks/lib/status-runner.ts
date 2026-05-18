@@ -1,6 +1,7 @@
 import { readdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { readManifest } from "./manifest.ts";
+import { inspectProjectPiRuntime, PI_RUNTIME_TOOL, type ProjectPiRuntime } from "./pi-runtime.ts";
 import { listTemplateFiles, TEMPLATE_DIR } from "./templates.ts";
 
 export type PlanItem = { action: string; reason: string };
@@ -28,6 +29,7 @@ export interface StatusReport {
     agentOverrides: string[];
     promptSections: string[];
     missingGitignore: string[];
+    projectPiRuntime: ProjectPiRuntime | null;
   };
   recommendedWorkflow: PlanItem[];
   optionalFollowups: PlanItem[];
@@ -70,6 +72,28 @@ async function listSubskills(): Promise<string[]> {
 function intentIncludes(intent: string, words: string[]): boolean {
   const lower = intent.toLowerCase();
   return words.some((word) => lower.includes(word));
+}
+
+function wantsProjectPiRuntimeUpdate(intent: string): boolean {
+  const lower = intent.toLowerCase();
+  const hasPi = /\bpi\b/.test(lower) || lower.includes("pi-") || lower.includes("pi_") || lower.includes("pi버전") || lower.includes("pi 버전") || lower.includes("pi 업데이트");
+  const hasRuntimeSignal = [
+    "pi update",
+    "pi 업데이트",
+    "update notice",
+    "업데이트 안내",
+    "sandbox pi",
+    "샌드박스 pi",
+    "sandbox 안 pi",
+    "샌드박스 안 pi",
+    "mise.lock pi",
+    "lock에 구버전",
+    "lock 구버전",
+    "pi-coding-agent",
+    "@earendil-works/pi-coding-agent",
+  ].some((word) => lower.includes(word));
+  const hasVersionUpdate = hasPi && ["version", "latest", "outdated", "업데이트", "최신", "버전", "구버전"].some((word) => lower.includes(word));
+  return hasRuntimeSignal || hasVersionUpdate;
 }
 
 async function countManagedDrift(target: string): Promise<{ missing: string[]; outOfSync: string[] }> {
@@ -146,9 +170,10 @@ async function inspectSkill() {
   };
 }
 
-function buildPlan(intent: string, target: Awaited<ReturnType<typeof inspectTarget>>): PlanItem[] {
+function buildPlan(intent: string, target: Awaited<ReturnType<typeof inspectTarget>>, projectPiRuntime: ProjectPiRuntime | null): PlanItem[] {
   const plan: PlanItem[] = [];
-  const wantsUpdate = intentIncludes(intent, ["update", "reinstall", "version", "latest", "업데이트", "재설치", "버전", "최신"]);
+  const wantsPiRuntimeUpdate = wantsProjectPiRuntimeUpdate(intent);
+  const wantsUpdate = !wantsPiRuntimeUpdate && intentIncludes(intent, ["update", "reinstall", "version", "latest", "업데이트", "재설치", "버전", "최신"]);
   const wantsSetup = intentIncludes(intent, ["setup", "scaffold", "init", "처음", "세팅", "생성", "초기"]);
   const wantsSubagents = intentIncludes(intent, ["subagent", "model", "서브에이전트", "모델"]);
 
@@ -163,6 +188,38 @@ function buildPlan(intent: string, target: Awaited<ReturnType<typeof inspectTarg
     action: "/pi-workspace:doctor",
     reason: "validate mise/pi/yolobox/auth/writability before changing project files",
   });
+
+  if (wantsPiRuntimeUpdate) {
+    if (!projectPiRuntime?.configured) {
+      plan.push({
+        action: "inspect target .mise.toml",
+        reason: `project pi runtime is not managed by target .mise.toml (${PI_RUNTIME_TOOL} was not found); do not run host/global pi update`,
+      });
+    } else if (projectPiRuntime.checkError) {
+      plan.push({
+        action: "inspect project pi runtime manually",
+        reason: `could not check project pi runtime freshness: ${projectPiRuntime.checkError}`,
+      });
+    } else if (projectPiRuntime.outdated) {
+      plan.push({
+        action: `mise upgrade --dry-run --local ${PI_RUNTIME_TOOL}`,
+        reason: `show project pi runtime update plan for ${target.absTarget}: ${projectPiRuntime.current} -> ${projectPiRuntime.latest}; does not run host/global pi update`,
+      });
+      plan.push({
+        action: `mise upgrade --local ${PI_RUNTIME_TOOL}`,
+        reason: "after user approval, update target mise.lock and local mise tool cache for the project pi runtime only",
+      });
+      plan.push({
+        action: "mise exec -- pi --version",
+        reason: "confirm the target project resolves the updated pi runtime",
+      });
+    } else {
+      plan.push({
+        action: "mise exec -- pi --version",
+        reason: "project pi runtime is already current; confirm resolved version in target project",
+      });
+    }
+  }
 
   if (!target.manifest) {
     plan.push({
@@ -310,6 +367,12 @@ function printApprovalGuidance(plan: PlanItem[]): void {
   }
   console.log("  Ask for one approval to run only the recommended workflow end-to-end.");
   console.log("  After approval, execute the steps in order and continue until the workspace is usable or a real blocker appears.");
+  if (plan.some((item) => item.action === `mise upgrade --local ${PI_RUNTIME_TOOL}`)) {
+    console.log("  Project pi runtime upgrade may update mise.lock and the local mise tool cache.");
+    console.log("  Run the dry-run step first and report unexpected output before the mutating upgrade.");
+    console.log("  Do not run host/global pi update or global npm update for this workflow.");
+    console.log("  After success, tell the user to exit any existing sandbox/pi session and run mise run pi again.");
+  }
   console.log("  If /pi-workspace:update is needed, show the managed-file diff first, then apply the managed refresh only after that approval.");
   console.log("  Do not include deferred optional follow-ups in this approval request.");
 }
@@ -317,6 +380,9 @@ function printApprovalGuidance(plan: PlanItem[]): void {
 export async function buildStatusReport(targetArg: string, intent = ""): Promise<StatusReport> {
   const skill = await inspectSkill();
   const target = await inspectTarget(targetArg);
+  const projectPiRuntime = wantsProjectPiRuntimeUpdate(intent)
+    ? await inspectProjectPiRuntime(target.absTarget)
+    : null;
   return {
     skill: {
       version: skill.version,
@@ -339,8 +405,9 @@ export async function buildStatusReport(targetArg: string, intent = ""): Promise
       agentOverrides: target.agentOverrideNames,
       promptSections: target.promptSections,
       missingGitignore: target.missingGitignore,
+      projectPiRuntime,
     },
-    recommendedWorkflow: buildPlan(intent, target),
+    recommendedWorkflow: buildPlan(intent, target, projectPiRuntime),
     optionalFollowups: buildOptionalFollowups(intent, target),
     notNeeded: buildSkipped(target),
   };
@@ -367,6 +434,22 @@ export function printStatusReport(report: StatusReport): void {
   console.log(`  agentOverrides: ${report.target.agentOverrides.length ? report.target.agentOverrides.join(", ") : "none"}`);
   console.log(`  pi-prompts sections: ${report.target.promptSections.length ? report.target.promptSections.join(", ") : "none"}`);
   console.log(`  missing gitignore patterns: ${report.target.missingGitignore.length ? report.target.missingGitignore.join(", ") : "none"}`);
+  if (report.target.projectPiRuntime) {
+    const runtime = report.target.projectPiRuntime;
+    console.log("\n[status] Project pi runtime\n");
+    console.log(`  configured in target .mise.toml: ${runtime.configured ? "yes" : "no"}`);
+    if (runtime.sourcePath) console.log(`  source: ${runtime.sourcePath}`);
+    if (runtime.requested) console.log(`  requested: ${runtime.requested}`);
+    if (runtime.current) console.log(`  current: ${runtime.current}`);
+    if (runtime.latest) console.log(`  latest: ${runtime.latest}`);
+    console.log(`  outdated: ${runtime.outdated ? "yes" : "no"}`);
+    if (runtime.checkError) console.log(`  check error: ${runtime.checkError}`);
+    if (runtime.outdated) {
+      console.log(`  update command: mise upgrade --local ${PI_RUNTIME_TOOL}`);
+      console.log("  after update: exit any existing sandbox/pi session, then run mise run pi from the target project");
+    }
+    console.log("  host/global pi update is not managed here");
+  }
 
   printPlan("Recommended workflow", report.recommendedWorkflow);
   printApprovalGuidance(report.recommendedWorkflow);

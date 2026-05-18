@@ -131,6 +131,36 @@ AGENTS.md               — project-level agent instructions
 Checks: mise, pi, pi version ≥ 0.70, YoloBox, pi auth, target writable, no secrets committed.
 It does not check for the latest host `pi` or `yolobox` release, and it does not update host tools automatically. Follow each tool's own update notice when needed.
 
+If a sandboxed `mise run pi` session keeps showing a pi update notice after you already updated host `pi`, ask smart mode with the exact symptom:
+
+```
+/pi-workspace pi update
+/pi-workspace 샌드박스 안 pi 업데이트 안내가 계속 떠
+/pi-workspace mise.lock에 pi가 구버전이야
+```
+
+pi-workspace projects run pi through the project mise runtime:
+
+```toml
+[tools]
+"npm:@earendil-works/pi-coding-agent" = "latest"
+```
+
+When `mise.lock` pins an older resolved version, smart mode checks the project runtime with:
+
+```bash
+mise outdated --local --json npm:@earendil-works/pi-coding-agent
+```
+
+If outdated, it shows a dry-run first, then after approval runs:
+
+```bash
+mise upgrade --local npm:@earendil-works/pi-coding-agent
+mise exec -- pi --version
+```
+
+This updates the project mise runtime and may update `mise.lock`. It does not run host/global `pi update`. Exit any existing sandbox/pi session and run `mise run pi` again to use the updated runtime.
+
 ```
 /pi-workspace:verify
 ```
