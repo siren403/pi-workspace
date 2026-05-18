@@ -1,0 +1,21 @@
+#!/usr/bin/env sh
+#MISE description="Check pi-workspace runtime and target workspace health"
+set -eu
+
+if ! command -v bun >/dev/null 2>&1; then
+  cat >&2 <<EOF
+[doctor] ERROR: bun is required before pi-workspace tasks can run.
+
+This skill ships Bun/TypeScript mise tasks. From the skill directory, run:
+
+  mise trust --yes
+  mise install bun
+
+Then retry:
+
+  mise run doctor -- --target <path>
+EOF
+  exit 1
+fi
+
+exec bun "$MISE_CONFIG_ROOT/.mise/tasks/lib/doctor-main.ts" "$@"

@@ -47,8 +47,12 @@ npx skills add siren403/pi-workspace --full-depth
 ```bash
 cd .pi/skills/pi-workspace
 mise trust --yes
+mise exec -- bun --version  # 실패하면 사용자 승인 후: mise install bun
 mise run status -- --target <target> --intent "<사용자 요청 원문>"
 ```
+
+`status` 또는 `doctor`가 `bun is required`로 중단되면 사용자가 승인한 뒤 같은 스킬 디렉터리에서 `mise install bun`을 실행하고, 원래 명령을 재시도한다.
+이 bootstrap은 스킬 task 런타임 준비이며 target project 파일을 변경하지 않는다.
 
 `status` task는 파일을 변경하지 않고 스킬 설치 상태, target workspace 상태, 다음 실행 계획을 출력한다. 에이전트는 `Recommended workflow`만 필요한 작업으로 요약하고, `Optional follow-ups`는 선택 항목으로 분리한다.
 
@@ -101,6 +105,7 @@ mise run status -- --target <target> --intent "<사용자 요청 원문>"
 ```bash
 cd .pi/skills/pi-workspace
 mise trust --yes
+mise exec -- bun --version  # 실패하면 사용자 승인 후: mise install bun
 
 mise run doctor    -- --target <path>
 mise run status    -- --target <path> --intent "<사용자 요청 원문>"
@@ -261,7 +266,9 @@ AGENTS.md에 에이전트 행동 지침 프롬프트를 관리한다.
 ## 금지
 
 - auth.json, API key, .env, 시크릿 생성·복사 금지
-- mise, bun, node 자동 설치 금지 (mise 없으면 중단하고 안내만)
+- mise, bun, node를 사용자 승인 없이 자동 설치 금지
+- mise 없으면 중단하고 안내만 한다
+- bun 없으면 스킬 디렉터리의 `mise install bun` 필요성을 설명하고 승인받은 뒤 진행한다
 - `--force` 없이 기존 파일 덮어쓰기 금지
 - doctor ERROR 상태에서 scaffold 진행 금지
 - `/pi-workspace:subagents` 실행 전 pi 인증 여부 반드시 확인

@@ -3,10 +3,9 @@ import { assertCleanWorkspace, assertDriftedWorkspace, assertMissingPackage, ass
 import { $ } from "bun";
 
 const SKILL_DIR = new URL("../../skills/pi-workspace/", import.meta.url).pathname;
-const STATUS_TASK = new URL("../../skills/pi-workspace/.mise/tasks/status.ts", import.meta.url).pathname;
 
 async function status(target: string, intent: string) {
-  const result = await $`${STATUS_TASK} --target ${target} --intent ${intent} --json`.cwd(SKILL_DIR).quiet();
+  const result = await $`mise run status -- --target ${target} --intent ${intent} --json`.cwd(SKILL_DIR).quiet();
   return JSON.parse(result.stdout.toString());
 }
 

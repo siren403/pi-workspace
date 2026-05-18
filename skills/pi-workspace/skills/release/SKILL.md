@@ -59,9 +59,12 @@ pi-workspace skill package의 릴리즈를 준비한다. 변경은 작게 묶고
    mise run e2e:smart
    mise run skill:install-check
    npx skills add ./skills/pi-workspace --list --full-depth
+   env PATH="$HOME/.local/bin:/usr/bin:/bin" MISE_DATA_DIR=/tmp/pi-workspace-mise-empty MISE_AUTO_INSTALL=0 mise run status -- --target /tmp
    npm publish --dry-run
    git diff --check
    ```
+
+   cold-start 검증은 `status`가 cryptic shebang 오류 대신 `bun is required` bootstrap 안내를 출력하는지 확인한다. 이 명령은 실패 exit가 정상일 수 있으며, 메시지를 확인한다.
 
 5. 실제 agent e2e는 opt-in으로만 실행
    ```bash
