@@ -1,6 +1,8 @@
-import { resolve, join } from "path";
-import { access, constants } from "fs/promises";
+import { relative, resolve, join } from "path";
+import { access, constants, readdir } from "fs/promises";
 import { readManifest, MANIFEST_FILE } from "./manifest.ts";
+
+const TEMPLATE_DIR = resolve(import.meta.dir, "../../../templates/scaffold");
 
 type Status = "ok" | "warn" | "error";
 interface Check { name: string; status: Status; message: string; fix?: string }
@@ -24,8 +26,28 @@ async function checkManagedFiles(target: string): Promise<Check[]> {
   const manifest = await readManifest(target);
   if (!manifest) return [];
   const checks: Check[] = [];
-  for (const rel of manifest.managedFiles) {
-    const exists = await Bun.file(resolve(target, rel)).exists();
+  const templateFiles = await listTemplateFiles();
+  const candidates = [...new Set([...manifest.managedFiles, ...templateFiles])].sort();
+  for (const rel of candidates) {
+    const path = resolve(target, rel);
+    const exists = await Bun.file(path).exists();
+    const templatePath = resolve(TEMPLATE_DIR, rel);
+    const hasTemplate = await Bun.file(templatePath).exists();
+    if (exists && hasTemplate) {
+      const [actual, expected] = await Promise.all([
+        Bun.file(path).text(),
+        Bun.file(templatePath).text(),
+      ]);
+      if (actual !== expected) {
+        checks.push({
+          name: `file:${rel}`,
+          status: "warn",
+          message: `${rel} differs from current template`,
+          fix: "Run /pi-workspace:update to review and refresh managed files",
+        });
+        continue;
+      }
+    }
     checks.push({
       name: `file:${rel}`,
       status: exists ? "ok" : "error",
@@ -34,6 +56,17 @@ async function checkManagedFiles(target: string): Promise<Check[]> {
     });
   }
   return checks;
+}
+
+async function listTemplateFiles(): Promise<string[]> {
+  const entries = await readdir(TEMPLATE_DIR, { withFileTypes: true, recursive: true });
+  const paths: string[] = [];
+  for (const entry of entries) {
+    if (!entry.isFile()) continue;
+    const parent = entry.parentPath ?? TEMPLATE_DIR;
+    paths.push(relative(TEMPLATE_DIR, resolve(parent, entry.name)));
+  }
+  return paths.sort();
 }
 
 async function checkForbiddenFiles(target: string): Promise<Check> {

@@ -1,5 +1,5 @@
-import { cleanWorkspaceFixture, driftedWorkspaceFixture, missingPackageFixture, newProjectFixture } from "../fixtures/workspace.ts";
-import { assertCleanWorkspace, assertDriftedWorkspace, assertMissingPackage, assertNewProject, assertUpdateIntent } from "../assertions/smart.ts";
+import { cleanWorkspaceFixture, driftedWorkspaceFixture, missingPackageFixture, newProjectFixture, staleManifestFixture } from "../fixtures/workspace.ts";
+import { assertCleanWorkspace, assertDriftedWorkspace, assertMissingPackage, assertNewProject, assertStaleManifestWorkspace, assertUpdateIntent } from "../assertions/smart.ts";
 import { $ } from "bun";
 
 const SKILL_DIR = new URL("../../skills/pi-workspace/", import.meta.url).pathname;
@@ -30,6 +30,10 @@ export async function runSmartWorkflowScenario(): Promise<void> {
   await withFixture(driftedWorkspaceFixture(), async ({ target }) => {
     assertDriftedWorkspace(await status(target, "작업 가능한 상태로 만들어줘"));
     assertUpdateIntent(await status(target, "재설치 후 최신 상태 확인"));
+  });
+
+  await withFixture(staleManifestFixture(), async ({ target }) => {
+    assertStaleManifestWorkspace(await status(target, "작업 가능한 상태로 만들어줘"));
   });
 
   await withFixture(missingPackageFixture(), async ({ target }) => {

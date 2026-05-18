@@ -1,5 +1,5 @@
 import { readdir } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { join, relative, resolve } from "node:path";
 import { readManifest } from "./manifest.ts";
 
 export type PlanItem = { action: string; reason: string };
@@ -66,6 +66,21 @@ async function listSubskills(): Promise<string[]> {
   }
 }
 
+async function listTemplateFiles(): Promise<string[]> {
+  try {
+    const entries = await readdir(TEMPLATE_DIR, { withFileTypes: true, recursive: true });
+    const paths: string[] = [];
+    for (const entry of entries) {
+      if (!entry.isFile()) continue;
+      const parent = entry.parentPath ?? TEMPLATE_DIR;
+      paths.push(relative(TEMPLATE_DIR, join(parent, entry.name)));
+    }
+    return paths.sort();
+  } catch {
+    return [];
+  }
+}
+
 function intentIncludes(intent: string, words: string[]): boolean {
   const lower = intent.toLowerCase();
   return words.some((word) => lower.includes(word));
@@ -77,7 +92,8 @@ async function countManagedDrift(target: string): Promise<{ missing: string[]; o
 
   const missing: string[] = [];
   const outOfSync: string[] = [];
-  for (const relPath of manifest.managedFiles) {
+  const candidates = [...new Set([...manifest.managedFiles, ...(await listTemplateFiles())])].sort();
+  for (const relPath of candidates) {
     const dest = resolve(target, relPath);
     if (!(await exists(dest))) {
       missing.push(relPath);

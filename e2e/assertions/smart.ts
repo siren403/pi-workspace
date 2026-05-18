@@ -35,6 +35,11 @@ export function assertDriftedWorkspace(report: StatusReport): void {
   assertIncludes(report.optionalFollowups.map((item) => item.action), "/pi-workspace:prompts suggest", "drifted workspace optional");
 }
 
+export function assertStaleManifestWorkspace(report: StatusReport): void {
+  assertIncludes(report.target.drift.outOfSync, ".mise/tasks/pi:shell", "stale manifest workspace drift");
+  assertIncludes(actions(report), "/pi-workspace:update", "stale manifest workspace workflow");
+}
+
 export function assertUpdateIntent(report: StatusReport): void {
   assertIncludes(actions(report), "npx skills add siren403/pi-workspace --full-depth", "update intent workflow");
 }

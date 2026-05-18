@@ -1,6 +1,6 @@
 import { resolve, relative, join } from "path";
 import { readdir } from "fs/promises";
-import { readManifest, MANIFEST_FILE } from "./manifest.ts";
+import { readManifest, writeManifest, MANIFEST_FILE } from "./manifest.ts";
 import { writeFile, diffFile } from "./fs.ts";
 
 const TEMPLATES_DIR = resolve(import.meta.dir, "../../../templates/scaffold");
@@ -33,8 +33,9 @@ export async function runUpdate(opts: { target: string; force: boolean; diff: bo
 
   const templates = await getTemplateFiles();
   let updated = 0, skipped = 0, conflict = 0;
+  const candidates = [...new Set([...manifest.managedFiles, ...templates.keys()])].sort();
 
-  for (const rel of manifest.managedFiles) {
+  for (const rel of candidates) {
     if (CODE_GENERATED.includes(rel)) continue;  // 코드 생성 파일 제외
 
     const tmplPath = templates.get(rel);
@@ -63,6 +64,15 @@ export async function runUpdate(opts: { target: string; force: boolean; diff: bo
   }
 
   if (!opts.diff) {
+    if (conflict === 0) {
+      const managedFiles = [...new Set([...manifest.managedFiles, ...templates.keys()])].sort();
+      const changed = managedFiles.join("\n") !== [...manifest.managedFiles].sort().join("\n");
+      if (changed) {
+        await writeManifest(target, { ...manifest, managedFiles });
+        console.log("  ✓ .agent-workspace.json  (managedFiles updated)");
+        updated++;
+      }
+    }
     console.log(`\n  updated: ${updated}  skipped: ${skipped}  conflicts: ${conflict}`);
     if (conflict > 0)
       console.warn("  Use --force to overwrite conflicting files.");

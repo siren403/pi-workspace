@@ -110,6 +110,16 @@ export async function driftedWorkspaceFixture(): Promise<Fixture> {
   return fixture;
 }
 
+export async function staleManifestFixture(): Promise<Fixture> {
+  const fixture = await cleanWorkspaceFixture();
+  const manifestPath = join(fixture.target, ".agent-workspace.json");
+  const manifest = await Bun.file(manifestPath).json() as { managedFiles: string[] };
+  manifest.managedFiles = manifest.managedFiles.filter((path) => path !== ".mise/tasks/pi:shell");
+  await write(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
+  await write(join(fixture.target, ".mise/tasks/pi:shell"), "#!/bin/sh\nexec yolobox run pi \"$@\"\n");
+  return fixture;
+}
+
 export async function missingPackageFixture(): Promise<Fixture> {
   const fixture = await createFixture();
   await write(join(fixture.target, ".pi/settings.json"), JSON.stringify({ packages: [] }, null, 2) + "\n");
