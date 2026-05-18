@@ -227,31 +227,54 @@ function buildPlan(intent: string, target: Awaited<ReturnType<typeof inspectTarg
       });
       return plan;
     } else if (projectPiRuntime.outdated) {
-      plan.push({
-        action: `mise upgrade --dry-run --local ${PI_RUNTIME_TOOL}`,
-        reason: `show project pi runtime update plan for ${target.absTarget}: ${projectPiRuntime.current} -> ${projectPiRuntime.latest}; does not run host/global pi update`,
-      });
-      plan.push({
-        action: `mise upgrade --local ${PI_RUNTIME_TOOL}`,
-        reason: projectPiRuntime.environment.location === "sandbox"
-          ? "after user approval, update the mounted project mise.lock from inside the sandbox; host mise cache may still need install"
-          : "after user approval, update target mise.lock and local mise tool cache for the project pi runtime only",
-      });
-      if (projectPiRuntime.environment.location === "sandbox") {
+      if (projectPiRuntime.npmReleasePolicy?.hasFilters) {
+        const filters = [
+          projectPiRuntime.npmReleasePolicy.before ? `before=${projectPiRuntime.npmReleasePolicy.before}` : "",
+          projectPiRuntime.npmReleasePolicy.minReleaseAge ? `min-release-age=${projectPiRuntime.npmReleasePolicy.minReleaseAge}` : "",
+        ].filter(Boolean).join(", ");
         plan.push({
-          action: "exit sandbox, then run mise install from the host project root",
-          reason: "sandbox mise cache may not be shared with host; host install prepares the updated runtime before re-entering",
+          action: "ask approval to temporarily relax npm release filters for this project pi runtime upgrade",
+          reason: `npm release filters are active (${filters}); newest pi may be intentionally blocked unless the user approves a temporary policy override`,
         });
         plan.push({
-          action: "mise run pi",
-          reason: "re-enter the sandbox after host mise install so the new project pi runtime is used",
+          action: `NPM_CONFIG_BEFORE= NPM_CONFIG_MIN_RELEASE_AGE=0 mise upgrade --dry-run --local ${PI_RUNTIME_TOOL}`,
+          reason: "show the exact project runtime upgrade plan with a one-command npm release-policy override; does not persist npm config changes",
         });
-        return plan;
-      } else {
+        plan.push({
+          action: `NPM_CONFIG_BEFORE= NPM_CONFIG_MIN_RELEASE_AGE=0 mise upgrade --local ${PI_RUNTIME_TOOL}`,
+          reason: "after approval, update target mise.lock and local mise tool cache with a one-command npm release-policy override",
+        });
         plan.push({
           action: "mise exec -- pi --version",
           reason: "confirm the target project resolves the updated pi runtime",
         });
+      } else {
+        plan.push({
+          action: `mise upgrade --dry-run --local ${PI_RUNTIME_TOOL}`,
+          reason: `show project pi runtime update plan for ${target.absTarget}: ${projectPiRuntime.current} -> ${projectPiRuntime.latest}; does not run host/global pi update`,
+        });
+        plan.push({
+          action: `mise upgrade --local ${PI_RUNTIME_TOOL}`,
+          reason: projectPiRuntime.environment.location === "sandbox"
+            ? "after user approval, update the mounted project mise.lock from inside the sandbox; host mise cache may still need install"
+            : "after user approval, update target mise.lock and local mise tool cache for the project pi runtime only",
+        });
+        if (projectPiRuntime.environment.location === "sandbox") {
+          plan.push({
+            action: "exit sandbox, then run mise install from the host project root",
+            reason: "sandbox mise cache may not be shared with host; host install prepares the updated runtime before re-entering",
+          });
+          plan.push({
+            action: "mise run pi",
+            reason: "re-enter the sandbox after host mise install so the new project pi runtime is used",
+          });
+          return plan;
+        } else {
+          plan.push({
+            action: "mise exec -- pi --version",
+            reason: "confirm the target project resolves the updated pi runtime",
+          });
+        }
       }
     } else {
       plan.push({
@@ -417,6 +440,11 @@ function printApprovalGuidance(plan: PlanItem[]): void {
     console.log("  Run the dry-run step first and report unexpected output before the mutating upgrade.");
     console.log("  Do not run host/global pi update or global npm update for this workflow.");
     console.log("  After success, tell the user to exit any existing sandbox/pi session and run mise run pi again.");
+  } else if (plan.some((item) => item.action === "ask approval to temporarily relax npm release filters for this project pi runtime upgrade")) {
+    console.log("  npm release filters are active, so the newest pi package may be intentionally blocked.");
+    console.log("  Report the active npm before/min-release-age values and ask whether to use one-command env overrides for this project runtime upgrade.");
+    console.log("  If approved, run the listed NPM_CONFIG_BEFORE= NPM_CONFIG_MIN_RELEASE_AGE=0 mise commands; do not persist npm config changes.");
+    console.log("  Do not run raw pi update, global npm install/update, or repeated version guesses as a workaround.");
   } else if (plan.some((item) => item.action === "exit sandbox, then run /pi-workspace:update from the host project root")) {
     console.log("  This pi runtime update request was detected inside a sandbox without mise.");
     console.log("  The target Dockerfile is also stale, so refresh managed files from the host before trying the runtime update again.");
@@ -502,6 +530,13 @@ export function printStatusReport(report: StatusReport): void {
     if (runtime.latest) console.log(`  latest: ${runtime.latest}`);
     console.log(`  outdated: ${runtime.outdated ? "yes" : "no"}`);
     if (runtime.checkError) console.log(`  check error: ${runtime.checkError}`);
+    if (runtime.npmReleasePolicy) {
+      const policy = runtime.npmReleasePolicy;
+      console.log(`  npm release filters: ${policy.hasFilters ? "active" : "none"}`);
+      if (policy.before) console.log(`  npm before: ${policy.before}`);
+      if (policy.minReleaseAge) console.log(`  npm min-release-age: ${policy.minReleaseAge}`);
+      if (policy.checkError) console.log(`  npm policy check error: ${policy.checkError}`);
+    }
     if (runtime.outdated) {
       console.log(`  update command: mise upgrade --local ${PI_RUNTIME_TOOL}`);
       if (runtime.environment.location === "host" && runtime.environment.miseAvailable) {

@@ -18,7 +18,15 @@ export interface ProjectPiRuntime {
   outdated: boolean;
   sourcePath?: string;
   checkError?: string;
+  npmReleasePolicy?: NpmReleasePolicy;
   environment: RuntimeEnvironment;
+}
+
+export interface NpmReleasePolicy {
+  before?: string;
+  minReleaseAge?: string;
+  hasFilters: boolean;
+  checkError?: string;
 }
 
 interface MiseOutdatedEntry {
@@ -60,6 +68,51 @@ async function readText(path: string): Promise<string> {
 async function commandExists(command: string): Promise<boolean> {
   const result = await $`which ${command}`.quiet().nothrow();
   return result.exitCode === 0;
+}
+
+function activeNpmValue(value: string): string | undefined {
+  const normalized = value.trim();
+  if (!normalized || normalized === "null" || normalized === "undefined") return undefined;
+  return normalized;
+}
+
+async function inspectNpmReleasePolicy(target: string): Promise<NpmReleasePolicy> {
+  if (process.env.PI_WORKSPACE_TEST_NPM_BEFORE !== undefined || process.env.PI_WORKSPACE_TEST_NPM_MIN_RELEASE_AGE !== undefined) {
+    const policy = {
+      before: activeNpmValue(process.env.PI_WORKSPACE_TEST_NPM_BEFORE ?? ""),
+      minReleaseAge: activeNpmValue(process.env.PI_WORKSPACE_TEST_NPM_MIN_RELEASE_AGE ?? ""),
+    };
+    return {
+      ...policy,
+      hasFilters: Boolean(policy.before || policy.minReleaseAge),
+    };
+  }
+
+  if (!await commandExists("npm")) {
+    return { hasFilters: false, checkError: "npm is not available in the current execution environment" };
+  }
+
+  const [before, minReleaseAge] = await Promise.all([
+    $`npm config get before`.cwd(target).quiet().nothrow(),
+    $`npm config get min-release-age`.cwd(target).quiet().nothrow(),
+  ]);
+
+  if (before.exitCode !== 0 || minReleaseAge.exitCode !== 0) {
+    const message = [
+      before.stderr.toString().trim(),
+      minReleaseAge.stderr.toString().trim(),
+    ].filter(Boolean).join("; ");
+    return { hasFilters: false, checkError: message || "npm config inspection failed" };
+  }
+
+  const policy = {
+    before: activeNpmValue(before.stdout.toString()),
+    minReleaseAge: activeNpmValue(minReleaseAge.stdout.toString()),
+  };
+  return {
+    ...policy,
+    hasFilters: Boolean(policy.before || policy.minReleaseAge),
+  };
 }
 
 export async function inspectRuntimeEnvironment(): Promise<RuntimeEnvironment> {
@@ -129,20 +182,22 @@ function fromOutdatedJson(jsonText: string, target: string): ProjectPiRuntime {
 export async function inspectProjectPiRuntime(target: string): Promise<ProjectPiRuntime> {
   const sourcePath = resolve(target, ".mise.toml");
   const environment = await inspectRuntimeEnvironment();
+  const npmReleasePolicy = environment.miseAvailable ? await inspectNpmReleasePolicy(target) : undefined;
   if (!await hasProjectPiRuntimeTool(target)) {
-    return { configured: false, outdated: false, sourcePath, environment };
+    return { configured: false, outdated: false, sourcePath, npmReleasePolicy, environment };
   }
 
   const injected = process.env.PI_WORKSPACE_TEST_PI_RUNTIME_OUTDATED_JSON;
   if (injected !== undefined) {
     try {
-      return { ...fromOutdatedJson(injected, target), environment };
+      return { ...fromOutdatedJson(injected, target), npmReleasePolicy, environment };
     } catch (error) {
       return {
         configured: true,
         outdated: false,
         sourcePath,
         checkError: error instanceof Error ? error.message : String(error),
+        npmReleasePolicy,
         environment,
       };
     }
@@ -154,6 +209,7 @@ export async function inspectProjectPiRuntime(target: string): Promise<ProjectPi
       outdated: false,
       sourcePath,
       checkError: "mise is not available in the current execution environment",
+      npmReleasePolicy,
       environment,
     };
   }
@@ -170,16 +226,18 @@ export async function inspectProjectPiRuntime(target: string): Promise<ProjectPi
         outdated: false,
         sourcePath,
         checkError: message || "mise outdated failed",
+        npmReleasePolicy,
         environment,
       };
     }
-    return { ...fromOutdatedJson(result.stdout.toString(), target), environment };
+    return { ...fromOutdatedJson(result.stdout.toString(), target), npmReleasePolicy, environment };
   } catch (error) {
     return {
       configured: true,
       outdated: false,
       sourcePath,
       checkError: error instanceof Error ? error.message : String(error),
+      npmReleasePolicy,
       environment,
     };
   }

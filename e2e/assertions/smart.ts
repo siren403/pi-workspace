@@ -52,6 +52,13 @@ export function assertPiRuntimeUpdateIntent(report: StatusReport): void {
   assertIncludes(actions(report), "/pi-workspace:verify", "pi runtime verify workflow");
 }
 
+export function assertPiRuntimeNpmPolicyBlocked(report: StatusReport): void {
+  assertIncludes(actions(report), "ask approval to temporarily relax npm release filters for this project pi runtime upgrade", "npm release policy should require explicit override approval");
+  assertIncludes(actions(report), "NPM_CONFIG_BEFORE= NPM_CONFIG_MIN_RELEASE_AGE=0 mise upgrade --dry-run --local npm:@earendil-works/pi-coding-agent", "npm release policy workflow should dry-run with one-command override");
+  assertIncludes(actions(report), "NPM_CONFIG_BEFORE= NPM_CONFIG_MIN_RELEASE_AGE=0 mise upgrade --local npm:@earendil-works/pi-coding-agent", "npm release policy workflow should proceed with one-command override");
+  assertNotIncludes(actions(report), "pi update", "npm release policy should not fall back to raw pi update");
+}
+
 export function assertPiRuntimeSandboxIntent(report: StatusReport): void {
   assertIncludes(actions(report), "mise upgrade --dry-run --local npm:@earendil-works/pi-coding-agent", "sandbox pi runtime should dry-run lock update");
   assertIncludes(actions(report), "mise upgrade --local npm:@earendil-works/pi-coding-agent", "sandbox pi runtime should update mounted lock");

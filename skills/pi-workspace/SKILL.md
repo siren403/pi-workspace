@@ -100,6 +100,11 @@ mise exec -- pi --version
 host/global `pi update`, global npm install/update는 실행하지 않는다.
 이미 열려 있던 sandbox/pi 세션은 이전 pi 프로세스를 계속 사용할 수 있으므로, 갱신 후 기존 세션을 종료하고 target project에서 `mise run pi`로 재진입하라고 안내한다.
 
+`npm config before` 또는 `npm config min-release-age`가 설정되어 있으면 최신 pi 패키지가 npm 정책에 의해 차단될 수 있다.
+이 경우 스마트 모드는 active npm release filter 값을 보고하고, 사용자가 승인하면 해당 upgrade 명령에만 `NPM_CONFIG_BEFORE= NPM_CONFIG_MIN_RELEASE_AGE=0` 일회성 환경 오버라이드를 붙인다.
+에이전트는 raw `pi update`, global npm install/update, 여러 버전 찍어보기 같은 우회를 시도하지 않는다.
+사용자가 정책 변경을 명시적으로 승인하지 않으면 필터 기간이 지난 뒤에만 runtime upgrade를 재시도한다.
+
 pi runtime 업데이트는 host project root에서 실행하는 것이 가장 단순한 기본 경로다.
 스마트 모드는 `PI_WORKSPACE_SANDBOX=1`, `/.dockerenv`, `/proc/1/cgroup` 같은 신호로 sandbox/container 내부 실행을 감지한다.
 현재 skill scaffold/update가 관리하는 `.yolobox.Dockerfile`은 sandbox 내부에서 `mise`를 사용할 수 있도록 mise binary를 함께 설치한다.
