@@ -236,7 +236,7 @@ function buildPlan(intent: string, target: Awaited<ReturnType<typeof inspectTarg
   if (target.drift.missing.length > 0 || target.drift.outOfSync.length > 0 || target.missingGitignore.length > 0) {
     plan.push({
       action: "/pi-workspace:update",
-      reason: "managed file/template drift detected; show diff, then apply approved managed refresh",
+      reason: `managed file/template drift detected; show diff with mise run update -- --target ${target.absTarget} --diff, not git diff, then apply approved managed refresh`,
     });
     plan.push({
       action: "/pi-workspace:verify",
@@ -370,10 +370,12 @@ function printApprovalGuidance(plan: PlanItem[]): void {
   if (plan.some((item) => item.action === `mise upgrade --local ${PI_RUNTIME_TOOL}`)) {
     console.log("  Project pi runtime upgrade may update mise.lock and the local mise tool cache.");
     console.log("  Run the dry-run step first and report unexpected output before the mutating upgrade.");
-    console.log("  Do not run host/global pi update or global npm update for this workflow.");
-    console.log("  After success, tell the user to exit any existing sandbox/pi session and run mise run pi again.");
+  console.log("  Do not run host/global pi update or global npm update for this workflow.");
+  console.log("  After success, tell the user to exit any existing sandbox/pi session and run mise run pi again.");
   }
-  console.log("  If /pi-workspace:update is needed, show the managed-file diff first, then apply the managed refresh only after that approval.");
+  console.log("  If /pi-workspace:update is needed, show the managed-file diff with mise run update -- --target <target> --diff.");
+  console.log("  Do not use git diff for managed-file previews; the target may not be a git repository.");
+  console.log("  Apply the managed refresh only after the diff approval.");
   console.log("  Do not include deferred optional follow-ups in this approval request.");
 }
 

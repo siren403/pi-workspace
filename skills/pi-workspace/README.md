@@ -90,6 +90,14 @@ Smart mode:
 4. After one approval, the agent runs the recommended workflow end-to-end until the workspace is usable or a real blocker appears.
 5. For managed-file drift, the agent shows the diff first; if approved, it applies the managed refresh and verifies in the same workflow.
 
+Managed-file diff previews come from the pi-workspace update task, not from git:
+
+```bash
+mise run update -- --target <path> --diff
+```
+
+Do not use `git diff` for this preview. A pi-workspace target does not have to be a git repository.
+
 Typical routing:
 
 | Situation | Suggested action |

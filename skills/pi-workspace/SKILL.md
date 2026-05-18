@@ -63,7 +63,8 @@ mise run status -- --target <target> --intent "<사용자 요청 원문>"
 사용자가 명시적으로 요청하지 않는 한 recommended workflow 진행 중 optional 작업을 섞지 않는다.
 
 `/pi-workspace:update`가 필요한 경우:
-- 먼저 managed-file diff를 보여준다.
+- 먼저 `mise run update -- --target <target> --diff`로 managed-file diff를 보여준다.
+- managed-file diff preview에 `git diff`를 사용하지 않는다. target project가 git repository가 아닐 수 있다.
 - 사용자가 “해당 managed update 진행”을 승인하면 같은 승인 흐름 안에서 `--force` 갱신 후 verify까지 진행한다.
 - diff가 예상과 다르거나 managed files 밖의 변경이 필요하면 중단하고 다시 확인한다.
 
@@ -185,6 +186,7 @@ mise run pi:shell -- list  # 비대화형 검증
 1. `mise run verify -- --target <path>` 실행
 2. `differs from current template` warning이 있으면 `/pi-workspace:update`로 전환
 3. 먼저 `mise run update -- --target <path> --diff`로 변경 내용을 보여줌
+   - `git diff`를 사용하지 않는다. pi-workspace managed diff는 update task의 `--diff` 출력이 기준이다.
 4. 사용자가 managed update 적용을 승인하면 `mise run update -- --target <path> --force` 실행
 5. 갱신 후 `mise run verify -- --target <path>` 재실행
 6. verify 자체에서는 파일을 수정하지 않음
