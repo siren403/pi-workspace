@@ -137,6 +137,15 @@ mise run pi:shell -- list  # 비대화형 검증
 5. scaffold 완료 후 **verify** 실행
 6. 결과 요약 보고 + extensions·subagents 후속 안내
 
+## /pi-workspace:verify 플로우
+
+1. `mise run verify -- --target <path>` 실행
+2. `differs from current template` warning이 있으면 `/pi-workspace:update`로 전환
+3. 먼저 `mise run update -- --target <path> --diff`로 변경 내용을 보여줌
+4. 사용자가 managed update 적용을 승인하면 `mise run update -- --target <path> --force` 실행
+5. 갱신 후 `mise run verify -- --target <path>` 재실행
+6. verify 자체에서는 파일을 수정하지 않음
+
 ## /pi-workspace:subagents 플로우
 
 > 선행 조건: pi 인증 완료 (`pi /login`), pi-subagents 설치 (`pi install npm:pi-subagents -l`)
