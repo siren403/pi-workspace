@@ -169,13 +169,15 @@ mise exec -- pi --version
 
 This updates the project mise runtime and may update `mise.lock`. It does not run host/global `pi update`. Exit any existing sandbox/pi session and run `mise run pi` again to use the updated runtime.
 
-The runtime update workflow is host-first. If smart mode detects that it is running inside the YoloBox sandbox/container, it stops before mutating `mise.lock` and tells you to:
+The runtime update workflow is simplest from the host project root. If smart mode detects that it is running inside the YoloBox sandbox/container and `mise` is available, it can update the mounted project `mise.lock` there, then tells you to finish host preparation:
 
 ```bash
-# leave the current sandbox/pi session first
-/pi-workspace pi update   # from the host project root
-mise run pi               # re-enter after the update
+# after sandbox lock update, leave the current sandbox/pi session
+mise install              # from the host project root
+mise run pi               # re-enter with the updated project runtime
 ```
+
+If smart mode is inside the sandbox and `mise` is not available, it stops before mutation and tells you to rerun `/pi-workspace pi update` from the host project root.
 
 New scaffolded sandboxes include `PI_WORKSPACE_SANDBOX=1` so smart mode can identify this case. `/.dockerenv` and `/proc/1/cgroup` are used only as fallback signals.
 

@@ -196,16 +196,10 @@ function buildPlan(intent: string, target: Awaited<ReturnType<typeof inspectTarg
         reason: `project pi runtime is not managed by target .mise.toml (${PI_RUNTIME_TOOL} was not found); do not run host/global pi update`,
       });
       return plan;
-    } else if (projectPiRuntime.environment.location !== "host") {
-      plan.push({
-        action: "exit sandbox and rerun /pi-workspace pi update from the host project root",
-        reason: `project pi runtime updates must run on the host; current environment is ${projectPiRuntime.environment.location}`,
-      });
-      return plan;
     } else if (!projectPiRuntime.environment.miseAvailable) {
       plan.push({
         action: "install or activate mise on the host, then rerun /pi-workspace pi update",
-        reason: "project pi runtime update requires host mise; do not run host/global pi update as a substitute",
+        reason: `project pi runtime update requires mise; current environment is ${projectPiRuntime.environment.location}; do not run host/global pi update as a substitute`,
       });
       return plan;
     } else if (projectPiRuntime.checkError) {
@@ -221,12 +215,26 @@ function buildPlan(intent: string, target: Awaited<ReturnType<typeof inspectTarg
       });
       plan.push({
         action: `mise upgrade --local ${PI_RUNTIME_TOOL}`,
-        reason: "after user approval, update target mise.lock and local mise tool cache for the project pi runtime only",
+        reason: projectPiRuntime.environment.location === "sandbox"
+          ? "after user approval, update the mounted project mise.lock from inside the sandbox; host mise cache may still need install"
+          : "after user approval, update target mise.lock and local mise tool cache for the project pi runtime only",
       });
-      plan.push({
-        action: "mise exec -- pi --version",
-        reason: "confirm the target project resolves the updated pi runtime",
-      });
+      if (projectPiRuntime.environment.location === "sandbox") {
+        plan.push({
+          action: "exit sandbox, then run mise install from the host project root",
+          reason: "sandbox mise cache may not be shared with host; host install prepares the updated runtime before re-entering",
+        });
+        plan.push({
+          action: "mise run pi",
+          reason: "re-enter the sandbox after host mise install so the new project pi runtime is used",
+        });
+        return plan;
+      } else {
+        plan.push({
+          action: "mise exec -- pi --version",
+          reason: "confirm the target project resolves the updated pi runtime",
+        });
+      }
     } else {
       plan.push({
         action: "mise exec -- pi --version",
@@ -381,7 +389,12 @@ function printApprovalGuidance(plan: PlanItem[]): void {
   }
   console.log("  Ask for one approval to run only the recommended workflow end-to-end.");
   console.log("  After approval, execute the steps in order and continue until the workspace is usable or a real blocker appears.");
-  if (plan.some((item) => item.action === `mise upgrade --local ${PI_RUNTIME_TOOL}`)) {
+  if (plan.some((item) => item.action === "exit sandbox, then run mise install from the host project root")) {
+    console.log("  This pi runtime update is running inside a sandbox with mise available.");
+    console.log("  The mutating upgrade updates the mounted project mise.lock, but sandbox mise cache may not be shared with the host.");
+    console.log("  After the upgrade, stop in the sandbox and tell the user to run mise install from the host project root before mise run pi.");
+    console.log("  Do not run host/global pi update or global npm update for this workflow.");
+  } else if (plan.some((item) => item.action === `mise upgrade --local ${PI_RUNTIME_TOOL}`)) {
     console.log("  Project pi runtime upgrade may update mise.lock and the local mise tool cache.");
     console.log("  Run the dry-run step first and report unexpected output before the mutating upgrade.");
     console.log("  Do not run host/global pi update or global npm update for this workflow.");
@@ -471,6 +484,8 @@ export function printStatusReport(report: StatusReport): void {
       console.log(`  update command: mise upgrade --local ${PI_RUNTIME_TOOL}`);
       if (runtime.environment.location === "host" && runtime.environment.miseAvailable) {
         console.log("  after update: exit any existing sandbox/pi session, then run mise run pi from the target project");
+      } else if (runtime.environment.location === "sandbox" && runtime.environment.miseAvailable) {
+        console.log("  sandbox update mode: update the mounted mise.lock here, then exit and run mise install from the host project root");
       } else {
         console.log("  update must be run from the host project root; exit the sandbox and rerun /pi-workspace pi update");
       }

@@ -53,9 +53,12 @@ export function assertPiRuntimeUpdateIntent(report: StatusReport): void {
 }
 
 export function assertPiRuntimeSandboxIntent(report: StatusReport): void {
-  assertNotIncludes(actions(report), "mise upgrade --dry-run --local npm:@earendil-works/pi-coding-agent", "sandbox pi runtime should not dry-run upgrade");
-  assertNotIncludes(actions(report), "mise upgrade --local npm:@earendil-works/pi-coding-agent", "sandbox pi runtime should not upgrade");
-  assertIncludes(actions(report), "exit sandbox and rerun /pi-workspace pi update from the host project root", "sandbox pi runtime host rerun workflow");
+  assertIncludes(actions(report), "mise upgrade --dry-run --local npm:@earendil-works/pi-coding-agent", "sandbox pi runtime should dry-run lock update");
+  assertIncludes(actions(report), "mise upgrade --local npm:@earendil-works/pi-coding-agent", "sandbox pi runtime should update mounted lock");
+  assertIncludes(actions(report), "exit sandbox, then run mise install from the host project root", "sandbox pi runtime host install workflow");
+  assertIncludes(actions(report), "mise run pi", "sandbox pi runtime re-entry workflow");
+  assertNotIncludes(actions(report), "/pi-workspace:update", "sandbox pi runtime should not continue managed update");
+  assertNotIncludes(actions(report), "/pi-workspace:verify", "sandbox pi runtime should not continue verify");
 }
 
 export function assertMissingPackage(report: StatusReport): void {

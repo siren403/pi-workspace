@@ -100,10 +100,12 @@ mise exec -- pi --version
 host/global `pi update`, global npm install/update는 실행하지 않는다.
 이미 열려 있던 sandbox/pi 세션은 이전 pi 프로세스를 계속 사용할 수 있으므로, 갱신 후 기존 세션을 종료하고 target project에서 `mise run pi`로 재진입하라고 안내한다.
 
-pi runtime 업데이트는 host project root에서 실행하는 것이 기본 정책이다.
+pi runtime 업데이트는 host project root에서 실행하는 것이 가장 단순한 기본 경로다.
 스마트 모드는 `PI_WORKSPACE_SANDBOX=1`, `/.dockerenv`, `/proc/1/cgroup` 같은 신호로 sandbox/container 내부 실행을 감지한다.
-현재 실행 위치가 sandbox 또는 unknown이면 `mise upgrade --local ...` 같은 mutating command를 제안하지 않는다.
-대신 현재 sandbox/pi 세션을 종료하고 host project root에서 `/pi-workspace pi update`를 다시 실행한 뒤 `mise run pi`로 재진입하라고 안내한다.
+현재 실행 위치가 sandbox이고 `mise`가 있으면 mounted project의 `mise.lock` 갱신까지는 진행할 수 있다.
+이 경우 갱신 후 sandbox 세션을 종료하고 host project root에서 `mise install`을 실행한 뒤 `mise run pi`로 재진입하라고 안내한다.
+sandbox의 mise cache는 host와 공유되지 않을 수 있으므로, sandbox 안에서의 upgrade만으로 host 재진입 준비가 끝났다고 보지 않는다.
+현재 실행 위치가 sandbox/unknown이고 `mise`가 없으면 mutating command를 제안하지 않고, host project root에서 `/pi-workspace pi update`를 다시 실행하라고 안내한다.
 `mise` 사용 가능 여부는 host/sandbox 판정과 별도 축으로 다룬다. host에서 `mise`가 없으면 host mise를 설치/활성화한 뒤 다시 실행하라고 안내하고, host/global `pi update`를 대체 명령으로 사용하지 않는다.
 
 판단 기준:
