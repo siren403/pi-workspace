@@ -8,6 +8,38 @@ case "${1-}" in
   *) FORK_NAME="$1"; shift ;;
 esac
 PI_ARGS=""
+cleanup_yolobox_images() {
+  echo "[pi:fork] sandbox exited; checking old yolobox-custom images..."
+
+  if ! command -v docker >/dev/null 2>&1; then
+    echo "[pi:fork] image cleanup skipped: docker command not found"
+    return
+  fi
+
+  images=$(docker image ls --format "{{.ID}} {{.Repository}}:{{.Tag}}" --filter "reference=yolobox-custom:*" 2>/dev/null || true)
+  image_count=$(printf '%s\n' "$images" | sed '/^$/d' | wc -l | tr -d ' ')
+
+  if [ "$image_count" -le 1 ]; then
+    echo "[pi:fork] image cleanup: nothing to remove (${image_count} yolobox-custom image(s))"
+    return
+  fi
+
+  remove_ids=$(printf '%s\n' "$images" | sed '/^$/d' | awk 'NR > 1 {print $1}')
+  remove_names=$(printf '%s\n' "$images" | sed '/^$/d' | awk 'NR > 1 {$1=""; sub(/^ /, ""); print}')
+  remove_count=$(printf '%s\n' "$remove_ids" | sed '/^$/d' | wc -l | tr -d ' ')
+
+  echo "[pi:fork] image cleanup triggered: removing ${remove_count} old yolobox-custom image(s), keeping newest"
+  printf '%s\n' "$remove_names" | sed 's/^/[pi:fork]   remove: /'
+
+  cleanup_output=$(docker image rm $remove_ids 2>&1)
+  cleanup_status=$?
+  if [ "$cleanup_status" -eq 0 ]; then
+    echo "[pi:fork] image cleanup complete: removed ${remove_count} image(s)"
+  else
+    echo "[pi:fork] image cleanup warning: docker image rm exited ${cleanup_status}"
+    printf '%s\n' "$cleanup_output" | sed 's/^/[pi:fork]   /'
+  fi
+}
 quote_arg() {
   printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"
 }
@@ -29,8 +61,12 @@ done
 NPM_GLOBAL_ROOT=$(mise exec -- npm root -g 2>/dev/null || npm root -g)
 PI_AUTORUN_CMD="pi${PI_ARGS:+ $PI_ARGS}"
 
-exec yolobox fork --name "$FORK_NAME" \
+yolobox fork --name "$FORK_NAME" \
   --mount "$HOME/.pi/agent:/home/yolo/.pi/agent" \
   --mount "$NPM_GLOBAL_ROOT:/home/yolo/.npm-global/lib/node_modules" \
   --env NPM_CONFIG_PREFIX=/home/yolo/.npm-global \
   --env PI_AUTORUN_CMD="$PI_AUTORUN_CMD"
+sandbox_status=$?
+
+cleanup_yolobox_images
+exit "$sandbox_status"

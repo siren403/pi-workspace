@@ -6,6 +6,38 @@
 # 그 외 인자는 pi CLI로 전달한다. 예: mise run pi -- -c
 PI_VERSION=""
 PI_ARGS=""
+cleanup_yolobox_images() {
+  echo "[pi] sandbox exited; checking old yolobox-custom images..."
+
+  if ! command -v docker >/dev/null 2>&1; then
+    echo "[pi] image cleanup skipped: docker command not found"
+    return
+  fi
+
+  images=$(docker image ls --format "{{.ID}} {{.Repository}}:{{.Tag}}" --filter "reference=yolobox-custom:*" 2>/dev/null || true)
+  image_count=$(printf '%s\n' "$images" | sed '/^$/d' | wc -l | tr -d ' ')
+
+  if [ "$image_count" -le 1 ]; then
+    echo "[pi] image cleanup: nothing to remove (${image_count} yolobox-custom image(s))"
+    return
+  fi
+
+  remove_ids=$(printf '%s\n' "$images" | sed '/^$/d' | awk 'NR > 1 {print $1}')
+  remove_names=$(printf '%s\n' "$images" | sed '/^$/d' | awk 'NR > 1 {$1=""; sub(/^ /, ""); print}')
+  remove_count=$(printf '%s\n' "$remove_ids" | sed '/^$/d' | wc -l | tr -d ' ')
+
+  echo "[pi] image cleanup triggered: removing ${remove_count} old yolobox-custom image(s), keeping newest"
+  printf '%s\n' "$remove_names" | sed 's/^/[pi]   remove: /'
+
+  cleanup_output=$(docker image rm $remove_ids 2>&1)
+  cleanup_status=$?
+  if [ "$cleanup_status" -eq 0 ]; then
+    echo "[pi] image cleanup complete: removed ${remove_count} image(s)"
+  else
+    echo "[pi] image cleanup warning: docker image rm exited ${cleanup_status}"
+    printf '%s\n' "$cleanup_output" | sed 's/^/[pi]   /'
+  fi
+}
 quote_arg() {
   # POSIX-safe single-quote escaping for sh -lc in the sandbox.
   printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"
@@ -68,8 +100,7 @@ yolobox \
   --mount "$NPM_GLOBAL_ROOT:/home/yolo/.npm-global/lib/node_modules" \
   --env NPM_CONFIG_PREFIX=/home/yolo/.npm-global \
   --env PI_AUTORUN_CMD="$PI_AUTORUN_CMD"
+sandbox_status=$?
 
-# 세션 종료 후: yolobox-custom 이미지 중 최신 1개만 남기고 구버전 정리
-docker image ls --format "{{.ID}}" --filter "reference=yolobox-custom:*" 2>/dev/null \
-  | tail -n +2 \
-  | xargs -r docker image rm 2>/dev/null || true
+cleanup_yolobox_images
+exit "$sandbox_status"
