@@ -71,6 +71,9 @@ mise run status -- --target <target> --intent "<사용자 요청 원문>"
 status/update/verify는 항상 현재 설치된 skill의 `templates/scaffold` 파일 목록과 `.agent-workspace.json`의 `managedFiles`를 함께 비교한다.
 update 성공 후 `.agent-workspace.json`은 `manifestVersion`, `template.revision`, `managedFiles`를 최신 기준으로 normalize한다.
 
+Host의 `pi` CLI와 `yolobox` CLI 최신화는 pi-workspace가 관리하지 않는다.
+doctor는 설치 여부와 최소 pi 버전만 확인한다. 각 도구가 자체적으로 출력하는 업데이트 안내는 사용자가 필요할 때 수동으로 처리한다.
+
 판단 기준:
 
 1. **스킬 설치/업데이트 상태 확인**
@@ -80,6 +83,7 @@ update 성공 후 `.agent-workspace.json`은 `manifestVersion`, `template.revisi
 2. **doctor 실행**
    - ERROR → 오류 항목과 수정 방법 안내 후 중단
    - WARN → 계속할지 사용자 확인
+   - host `pi`, `yolobox` 최신 버전 확인이나 자동 업데이트는 수행하지 않음
 
 3. **workspace 상태 판단**
    - `.agent-workspace.json` 없음 → scaffold 계획 제안

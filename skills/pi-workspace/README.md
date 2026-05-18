@@ -129,6 +129,7 @@ AGENTS.md               — project-level agent instructions
 ```
 
 Checks: mise, pi, pi version ≥ 0.70, YoloBox, pi auth, target writable, no secrets committed.
+It does not check for the latest host `pi` or `yolobox` release, and it does not update host tools automatically. Follow each tool's own update notice when needed.
 
 ```
 /pi-workspace:verify

@@ -31,6 +31,9 @@ mise run doctor -- --target <path>
 | `target-writable` | 타겟 디렉토리 쓰기 가능 여부 |
 | `no-secret` | `.pi/auth.json` 등 시크릿 커밋 여부 |
 
+doctor는 host `pi` CLI와 `yolobox` CLI의 최신 릴리즈 여부를 확인하거나 자동 업데이트하지 않는다.
+각 도구가 자체적으로 출력하는 업데이트 안내는 사용자가 필요할 때 수동으로 처리한다.
+
 ## 결과 처리
 
 - **OK** → 다음 단계 진행
