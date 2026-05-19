@@ -9,6 +9,11 @@ This directory is the installable `pi-workspace` skill package. Keep it self-con
 - Keep shipped skill commands in `skills/pi-workspace/.mise/tasks/`.
 - Keep user project scaffold templates in `skills/pi-workspace/templates/`.
 
+## Architecture References
+
+- For host/sandbox boundaries, project-local pi runtime pinning, managed file drift, smart mode behavior, and npm release-policy override rules, read `../../docs/architecture.md`.
+- For approved stabilization sequencing and required constraints, read `../../docs/pi-workspace-stabilization-plan.md`.
+
 ## Installation
 
 - The primary skills.sh install command is:
