@@ -3,6 +3,8 @@
 Status: planning
 Last updated: 2026-05-19
 
+Architecture context: [architecture.md](./architecture.md)
+
 ## Goal
 
 Stabilize `pi-workspace` around one consistent model:
